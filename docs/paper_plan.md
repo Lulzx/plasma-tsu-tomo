@@ -18,10 +18,10 @@ The paper has one story told in two parts.
 | # | Claim | Evidence | Status |
 |---|---|---|---|
 | A1 | The evidence (marginal-likelihood) λ calibrates the posterior | Gaussian posterior coverage over random fields | done: 95% coverage 0.70 → 0.95 |
-| A2 | Discrete positive posterior: calibrated coverage, competitive accuracy | M3 + multi-seed run (4 phantoms × 5 seeds, ≥30 random fields) | M3 done: Potts covers 0.83–0.98 (GP 0.54–0.93); beats Tikhonov and GP on blob; GP and MFI more accurate on average. Multi-seed still to do |
-| A3 | The gain comes from positivity / bound / discreteness (decomposed) | `experiments/route2_ablation.py`: truncated Gaussian, log-Laplace, Potts K sweep | 3 problems: the gain is positivity; discreteness gives none. Extend to all phantoms and K = 7, 9 |
-| A4 | Holds on real geometry | TCV bolometer lines of sight (Hamm et al. open code) | geometry done (`tomo/tcv.py`); baselines run; EBMs on TCV to do |
-| A5 | Practical: converged (R-hat < 1.05) in under 60 s | M3 timings with load recorded | Potts converged in 30–49 s; I-dense 57–110 s |
+| A2 | Discrete positive posterior: calibrated coverage, competitive accuracy | M3 + multi-seed run | done: 68 problems on two geometries, all converged. Potts coverage 0.80–0.98 (GP 0.55–0.97). Accuracy tied with Tikhonov (29/50, p = 0.32; TCV 13/18); GP and MFI more accurate on average |
+| A3 | The gain comes from positivity / bound / discreteness (decomposed) | `experiments/route2_ablation.py` | done (7 problems): positivity 0.476 → 0.420; discreteness adds nothing; K = 7–9 equivalent |
+| A4 | Holds on real geometry | TCV bolometer lines of sight (Hamm et al. open code) | done: TCV multi-seed (18 problems); Potts best on TCV hollow and calibrated 0.90–0.98 |
+| A5 | Practical: converged (R-hat < 1.05) in under 60 s | timings with load recorded | synthetic 35–43 s; TCV 81–93 s (over target; loaded machine). Clean re-timing still open |
 | B1 | Bounded-degree exact embedding: construction, σ² + nτ² accounting, compensation, τ window | `ebm_chain` / `ebm_tree` docstrings and tests | done |
 | B2 | Mixing barrier explained: Gibbs spectral radius / missing-information theory predicts the measured slowdown | `docs/mixing_theory.md`, predicted vs measured autocorrelation time | done: theory within 5–20% of linear simulation, ratios within 2× of the discrete samplers, structural proposition proved |
 | B3 | A calibrated prior worsens the barrier (and the noise inflation) | theory + measurements | done: slowdown ∝ 1/λ (about 8×); noise inflation 6.5× chain, 3× tree |

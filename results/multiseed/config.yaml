@@ -41,7 +41,7 @@ model:
   lam: null
   eps_max_factor: 1.2
   A: null
-  sparse_threshold: 0.05
+  sparse_threshold: 0.2
   sparse_radius: null
   tau: 0.75
   tau_mode: dz

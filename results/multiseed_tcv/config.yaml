@@ -1,9 +1,11 @@
 seed: 0
 grid:
-  n: 32
+  n: 20
   size: 1.0
+  ny: 60
 data_grid:
-  n: 128
+  n: 80
+  ny: 240
 plasma:
   R0: 0.5
   Z0: 0.5
@@ -41,7 +43,7 @@ model:
   lam: null
   eps_max_factor: 1.2
   A: null
-  sparse_threshold: 0.05
+  sparse_threshold: 0.2
   sparse_radius: null
   tau: 0.75
   tau_mode: dz
@@ -69,6 +71,7 @@ experiments:
   - hollow
   - blob
   - edge
+  - divertor
   seed0: 1000
   n_random: 200
   n_random_ebm: 8

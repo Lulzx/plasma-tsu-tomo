@@ -1,0 +1,162 @@
+[
+ {
+  "phantom": "peaked",
+  "variant": "chain",
+  "Kz": 16,
+  "n_spins": 38852,
+  "n_blocks": 44,
+  "max_degree": 364,
+  "inflation": 26.491,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "peaked",
+  "variant": "tree",
+  "Kz": 16,
+  "n_spins": 37772,
+  "n_blocks": 66,
+  "max_degree": 244,
+  "inflation": 12.145,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "peaked",
+  "variant": "chain",
+  "Kz": 32,
+  "n_spins": 74276,
+  "n_blocks": 76,
+  "max_degree": 716,
+  "inflation": 5.513,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "peaked",
+  "variant": "tree",
+  "Kz": 32,
+  "n_spins": 72044,
+  "n_blocks": 114,
+  "max_degree": 468,
+  "inflation": 2.154,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "peaked",
+  "variant": "chain",
+  "Kz": 64,
+  "n_spins": 145124,
+  "n_blocks": 140,
+  "max_degree": 1420,
+  "inflation": 0.719,
+  "clamped_frac": 0.667
+ },
+ {
+  "phantom": "peaked",
+  "variant": "tree",
+  "Kz": 64,
+  "n_spins": 140588,
+  "n_blocks": 210,
+  "max_degree": 916,
+  "inflation": 0.121,
+  "clamped_frac": 0.333
+ },
+ {
+  "phantom": "peaked",
+  "variant": "chain",
+  "Kz": 128,
+  "n_spins": 286820,
+  "n_blocks": 268,
+  "max_degree": 2828,
+  "inflation": 0.005,
+  "clamped_frac": 0.056
+ },
+ {
+  "phantom": "peaked",
+  "variant": "tree",
+  "Kz": 128,
+  "n_spins": 277676,
+  "n_blocks": 402,
+  "max_degree": 1812,
+  "inflation": 0.0,
+  "clamped_frac": 0.0
+ },
+ {
+  "phantom": "hollow",
+  "variant": "chain",
+  "Kz": 16,
+  "n_spins": 38852,
+  "n_blocks": 44,
+  "max_degree": 364,
+  "inflation": 20.427,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "hollow",
+  "variant": "tree",
+  "Kz": 16,
+  "n_spins": 37772,
+  "n_blocks": 66,
+  "max_degree": 244,
+  "inflation": 9.315,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "hollow",
+  "variant": "chain",
+  "Kz": 32,
+  "n_spins": 74276,
+  "n_blocks": 76,
+  "max_degree": 716,
+  "inflation": 4.093,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "hollow",
+  "variant": "tree",
+  "Kz": 32,
+  "n_spins": 72044,
+  "n_blocks": 114,
+  "max_degree": 468,
+  "inflation": 1.492,
+  "clamped_frac": 1.0
+ },
+ {
+  "phantom": "hollow",
+  "variant": "chain",
+  "Kz": 64,
+  "n_spins": 145124,
+  "n_blocks": 140,
+  "max_degree": 1420,
+  "inflation": 0.363,
+  "clamped_frac": 0.653
+ },
+ {
+  "phantom": "hollow",
+  "variant": "tree",
+  "Kz": 64,
+  "n_spins": 140588,
+  "n_blocks": 210,
+  "max_degree": 916,
+  "inflation": 0.039,
+  "clamped_frac": 0.153
+ },
+ {
+  "phantom": "hollow",
+  "variant": "chain",
+  "Kz": 128,
+  "n_spins": 286820,
+  "n_blocks": 268,
+  "max_degree": 2828,
+  "inflation": -0.0,
+  "clamped_frac": 0.0
+ },
+ {
+  "phantom": "hollow",
+  "variant": "tree",
+  "Kz": 128,
+  "n_spins": 277676,
+  "n_blocks": 402,
+  "max_degree": 1812,
+  "inflation": 0.0,
+  "clamped_frac": 0.0
+ }
+]

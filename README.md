@@ -30,13 +30,16 @@ sampling unit (TSU).
 
 1. **A calibrated discrete posterior.** Choosing the smoothness hyperparameter by marginal likelihood calibrates the
    posterior: on random fields, 95% intervals cover 0.95 of pixels, against 0.70 with the discrepancy principle.
-   The Potts sampler converges (R-hat = 1.00) in 30–50 s and keeps coverage at 0.89–0.98 on every test problem except
-   the unidentifiable hollow profile. On the peaked profile, Gaussian-process tomography covers only 0.54.
+   Across 68 problems on two geometries (synthetic, and real TCV), the Potts sampler always converges
+   (R-hat ≤ 1.004). Its 95% coverage is 0.80–0.97 on the synthetic geometry and 0.90–0.98 on TCV. Gaussian-process
+   tomography drops to 0.55–0.78 on several phantom families.
 2. **Honest accuracy.**
-   - The discrete posterior ties tuned Tikhonov on most problems.
-   - It clearly beats Tikhonov and GP on an off-axis blob (0.59 vs 0.78 and 0.80).
-   - An ablation shows its gain over the Gaussian posterior comes from **positivity**, not from discreteness.
-   - GP tomography is the most accurate on average; minimum Fisher information (MFI) wins on peaked and blob.
+   - Over 50 synthetic problems, Potts ties tuned Tikhonov (wins 29 of 50, p = 0.32). It loses to GP (14 of 50) and
+     to minimum Fisher information (MFI, 8 of 50).
+   - On TCV it beats Tikhonov in 13 of 18 problems, and beats GP on the hollow, blob and edge phantoms.
+   - An ablation over 7 problems shows that its gain over the Gaussian posterior comes from **positivity**, not from
+     discreteness.
+   - MFI is the most accurate method overall.
 3. **Bounded-degree exact embeddings (I-chain, I-tree).** These replace the dense line-integral couplings with local
    running partial sums. The likelihood stays exact, as long as a variance-compensation rule is applied.
 4. **A mixing barrier, explained.** The embeddings never converge. Linear-Gaussian theory, validated against
@@ -90,7 +93,9 @@ with a balanced binary tree, so a pixel change reaches the data term in ⌈log�
   programming on a toy chord confirms it to 2e-4 nats at τ/Δz = 0.75.
 - **Rigidity.** With discrete z, the chain freezes when τ ≪ Δz. The usable window is Δz/2 ≲ τ ≲ σ/√n.
 - **Calibration hurts.** The softer, calibrated prior widens the windows for z, so Δz grows. Compensation then clamps,
-  inflating chord variance about 6.5× (chain) and 3× (tree).
+  inflating chord variance about 6.5× (chain) and 3× (tree) at K_z = 32. Keeping inflation at or below 10% needs
+  K_z ≈ 128 (chain: 287k spins, max degree 2,828) or K_z ≈ 64 (tree: 141k spins, max degree 916). At that size the
+  bounded-degree advantage is largely gone.
 
 Derivations are in the docstrings of [`tomo/ebm_chain.py`](tomo/ebm_chain.py) and [`tomo/ebm_tree.py`](tomo/ebm_tree.py).
 
@@ -159,6 +164,39 @@ started at random; 2,000 warm-up sweeps, then 500 samples taken every 10 sweeps.
 
 <img src="docs/figures/m3_reconstructions.png" width="100%" alt="Truth, Tikhonov, GP mean/std, and posterior mean/std/MAP of each EBM on four phantoms">
 
+### Multi-seed statistics
+
+The run uses Potts and I-sparse (threshold 0.2) against all baselines on the same problems. Values are mean rel-L2,
+with 95% coverage in parentheses. Full tables, standard deviations and sign tests are in `results/multiseed*/summary.md`.
+
+**Synthetic geometry** (50 problems: 4 phantoms × 5 noise seeds, plus 30 random fields):
+
+| | Tikhonov | MFI | GP | **Potts** | I-sparse |
+|---|---:|---:|---:|---:|---:|
+| Peaked | 0.285 | **0.210** | 0.228 (0.55) | 0.273 (0.97) | 0.281 (0.93) |
+| Hollow | 0.653 | 0.790 | **0.553** (0.67) | 0.569 (0.80) | 0.630 (0.58) |
+| Blob | 0.777 | **0.420** | 0.779 (0.86) | 0.620 (0.90) | 0.646 (0.54) |
+| Edge | 0.604 | **0.602** | 0.732 (0.81) | 0.608 (0.88) | 0.612 (0.79) |
+| Random (30) | 0.316 | 0.289 | **0.270** (0.89) | 0.319 (0.94) | 0.314 (0.90) |
+
+**Real TCV geometry** (18 problems: 5 phantoms × 2 seeds, plus 8 random fields; 120 chords, 1,148 pixels):
+
+| | Tikhonov | MFI | GP | **Potts** | I-sparse |
+|---|---:|---:|---:|---:|---:|
+| Peaked | 0.299 | **0.094** | 0.157 (0.96) | 0.191 (0.96) | 0.309 (0.80) |
+| Hollow | 0.487 | 0.391 | 0.638 (0.75) | **0.372** (0.92) | 0.518 (0.72) |
+| Blob | 0.699 | **0.400** | 0.677 (0.78) | 0.558 (0.93) | 0.693 (0.68) |
+| Edge | 0.685 | **0.479** | 0.668 (0.84) | 0.537 (0.90) | 0.727 (0.79) |
+| Divertor | 0.403 | **0.387** | 0.399 (0.97) | 0.422 (0.94) | 0.425 (0.89) |
+| Random (8) | 0.219 | 0.183 | **0.151** (0.92) | 0.211 (0.98) | 0.219 (0.97) |
+
+What the two tables show:
+- **Potts is the only method calibrated everywhere.**
+- **I-sparse is accurate but miscalibrated.** Dropping couplings narrows its posterior.
+- **Time:**
+  - Potts takes 35–43 s on the synthetic geometry and 81–93 s on TCV, measured with other jobs loading the machine.
+  - I-sparse takes 8–20 s.
+
 ### Ablations (M4, peaked phantom)
 
 - **Levels:** K = 8 is best for Potts (0.258); K = 4 is worse (0.322); K = 16 gives 0.278.
@@ -181,26 +219,27 @@ The table shows the exact Gaussian posterior under each choice of λ.
 | peaked (3 seeds) | 0.310 → 0.283 | 0.69 → 1.00 |
 | hollow (3 seeds) | 0.653 → 0.654 | 0.37 → 0.76 |
 
-### Where the gain comes from (ablation, preliminary)
+### Where the gain comes from (ablation)
 
-Each row uses the same evidence λ and the same upper bound ε_max:
+The run covers 4 phantoms and 3 random fields. Every row uses the same evidence λ and the same upper bound ε_max.
+Values are means over the 7 problems.
 
-| | Peaked | Hollow | Random |
-|---|---:|---:|---:|
-| Gaussian (exact) | 0.263 | 0.649 | **0.276** |
-| truncated ≥ 0 | 0.263 | 0.543 | 0.283 |
-| truncated [0, ε_max] | 0.296 | **0.536** | 0.305 |
-| Potts K = 4 / 8 / 16 / 32 | .322 / .255 / .280 / .289 | .608 / .554 / .543 / .541 | .310 / .289 / .299 / .302 |
+| Method | rel. L2 | 95% coverage |
+|---|---:|---:|
+| Gaussian (= tuned Tikhonov) | 0.476 | 0.93 |
+| **truncated ≥ 0 (positivity only)** | **0.420** | 0.91 |
+| truncated [0, ε_max] | 0.449 | 0.89 |
+| Potts K = 7 / 8 / 9 | 0.430 / 0.432 / 0.436 | 0.91–0.92 |
+| Potts K = 16 | 0.441 | 0.91 |
 
-- **Hollow:** positivity explains the whole gain.
-- **Peaked:** the K = 8 edge fades as K grows, so it is level alignment, not a benefit of discreteness.
+Positivity gives the gain. Discreteness adds nothing, and K = 7–9 are equivalent.
 
 ### Classical baselines (M2, 200 random fields)
 
 <img src="docs/figures/reconstructions.png" width="100%" alt="Truth and baseline reconstructions for five phantoms">
 
-GP (0.291) and MFI (0.296) beat Tikhonov (0.336 with GCV) on mean relative L2 error. GP's 95% coverage is 0.89.
-These numbers predate the switch to the evidence λ and will be regenerated.
+GP (0.291) and MFI (0.296) beat Tikhonov (0.335 with the evidence λ, 0.336 with GCV) on mean relative L2 error.
+GP's 95% coverage is 0.89.
 
 ### Real TCV geometry
 
@@ -216,7 +255,7 @@ pixels.
 | random | 0.19 | 0.11 |
 | divertor | 0.41 | 0.43 |
 
-The EBM variants have not yet been run on this geometry.
+The EBM results on this geometry are in the multi-seed table above.
 
 ## Fitting real hardware
 
@@ -228,6 +267,7 @@ cases checked by enumeration.
 |---|---:|---:|---:|
 | I-chain, K_z=16 | 38,852 | 178,182 | 4.6× |
 | I-chain, K_z=32 | 74,276 | 620,967 | 8.4× |
+| I-tree, K_z=16 / 32 | 37,772 / 72,044 | 190,889 / 656,301 | 5.1× / 9.1× |
 | I-sparse | 5,642 | 51,583 | 9.1× |
 | I-dense | 5,642 | 214,207 | 38× |
 
@@ -302,7 +342,9 @@ make all           # reproduce M1–M6 (several hours on a laptop)
 | M4 ablations (K, τ, sparsity, noise) | `make m4` | `results/m4_ablations/` |
 | M5 TSU energy and latency | `make m5` | `results/m5_energy/` |
 | M6 summary | `make m6` | `report/results_table.md` |
-| Positivity / discreteness ablation | `python experiments/route2_ablation.py --n-random 3` | `results/route2_ablation/` |
+| Positivity / discreteness ablation | `python experiments/route2_ablation.py --n-random 3 --Ks 4,7,8,9,16,32` | `results/route2_ablation/` |
+| Multi-seed statistics | `python experiments/multiseed.py`; TCV: `... --geometry tcv --config configs/tcv.yaml --seeds 2 --n-random 8` | `results/multiseed*/summary.md` |
+| K_z needed for exact compensation | `python experiments/kz_inflation.py` | `results/kz_inflation/` |
 | Mixing theory | `python experiments/mixing_theory.py` | `results/mixing_theory/`, `docs/figures/mixing_*.png` |
 | Degree-16 embedding | `python experiments/embed_report.py`, `python experiments/embed_sampling.py` | tables, sampling check |
 | TCV geometry check | `python -m tomo.tcv --fetch && python experiments/tcv_check.py` | `results/tcv_check/` |

@@ -50,12 +50,12 @@ The hollow profile is not identifiable from 72 chords at any λ tried.
 
 Source: `experiments/m2_baselines.py` → `results/m2_baselines/` (200 random fields).
 
-These numbers still use the discrepancy λ for "tuned" Tikhonov; they will be regenerated.
+Regenerated with the evidence λ:
 
 | Baseline, 200 random fields | Mean rel-L2 | 95% coverage |
 |---|---|---|
 | Tikhonov, GCV | 0.336 | – |
-| Tikhonov, tuned | 0.353 | – |
+| Tikhonov, tuned (evidence λ) | 0.335 | – |
 | MFI | 0.296 | – |
 | GP | 0.291 | 0.89 |
 
@@ -110,6 +110,74 @@ Setup: 4 phantoms plus 8 random fields, one noise seed each. Full schedule: 2,00
 - It clearly beats Tikhonov and GP on blob and somewhat on hollow, and ties Tikhonov elsewhere.
 - GP is best on average accuracy; MFI on peaked and blob.
 
+## 5a. Multi-seed statistics
+
+Source: `experiments/multiseed.py` → `results/multiseed/summary.md` (default geometry) and
+`results/multiseed_tcv/summary.md` (TCV). Potts and I-sparse (threshold 0.2) are compared against all baselines on
+the same problems. MAP annealing is skipped. Win rates are paired comparisons of rel-L2, with an exact two-sided
+sign test.
+
+### Default geometry
+
+50 problems: 4 phantoms × 5 noise seeds, plus 30 random fields. Values are mean rel-L2, with 95% coverage in
+parentheses.
+
+| Group | Tikhonov (tuned) | MFI | GP | Potts | I-sparse |
+|---|---|---|---|---|---|
+| Peaked | 0.285 | **0.210** | 0.228 (0.55) | 0.273 (0.97) | 0.281 (0.93) |
+| Hollow | 0.653 | 0.790 | **0.553** (0.67) | 0.569 (0.80) | 0.630 (0.58) |
+| Blob | 0.777 | **0.420** | 0.779 (0.86) | 0.620 (0.90) | 0.646 (0.54) |
+| Edge | 0.604 | **0.602** | 0.732 (0.81) | 0.608 (0.88) | 0.612 (0.79) |
+| Random (30) | 0.316 | 0.289 | **0.270** (0.89) | 0.319 (0.94) | 0.314 (0.90) |
+
+Paired win rates over all 50 problems:
+
+| Comparison | Wins / losses | p |
+|---|---|---|
+| Potts vs tuned Tikhonov | 29 / 21 | 0.32 (not significant) |
+| Potts vs GP | 14 / 36 | 0.003 |
+| Potts vs MFI | 8 / 42 | 1e-6 |
+| I-sparse vs Tikhonov | 30 / 20 | 0.20 |
+| I-sparse vs GP and MFI | 11 / 39 each | |
+
+Every Potts and I-sparse run converges (max R-hat ≤ 1.004).
+
+Time, on a heavily loaded machine (load 25–55 from other jobs): Potts 35–43 s, I-sparse 8–15 s.
+
+### TCV geometry
+
+18 problems: 5 phantoms × 2 seeds, plus 8 random fields. 1,148 pixels, 120 chords.
+
+| Group | Tikhonov (tuned) | MFI | GP | Potts | I-sparse |
+|---|---|---|---|---|---|
+| Peaked | 0.299 | **0.094** | 0.157 (0.96) | 0.191 (0.96) | 0.309 (0.80) |
+| Hollow | 0.487 | 0.391 | 0.638 (0.75) | **0.372** (0.92) | 0.518 (0.72) |
+| Blob | 0.699 | **0.400** | 0.677 (0.78) | 0.558 (0.93) | 0.693 (0.68) |
+| Edge | 0.685 | **0.479** | 0.668 (0.84) | 0.537 (0.90) | 0.727 (0.79) |
+| Divertor | 0.403 | **0.387** | 0.399 (0.97) | 0.422 (0.94) | 0.425 (0.89) |
+| Random (8) | 0.219 | 0.183 | **0.151** (0.92) | 0.211 (0.98) | 0.219 (0.97) |
+
+Paired win rates over all 18 problems:
+
+| Comparison | Wins / losses | p |
+|---|---|---|
+| Potts vs tuned Tikhonov | 13 / 5 | 0.10 |
+| Potts vs GP | 6 / 12 | 0.24 |
+| Potts vs MFI | 3 / 15 | 0.008 |
+
+Every run converges. Potts takes 81–93 s here, which is over the 60 s target, on a loaded machine and with 1,148
+pixels.
+
+### Reading
+
+- **Calibration is the robust result.** Potts covers 0.80–0.97 on the default geometry and 0.90–0.98 on TCV.
+  Its worst group is hollow on the default geometry (0.80). GP is badly over-confident on default peaked (0.55) and
+  hollow (0.67), and on TCV hollow and blob (0.75–0.78).
+- **Accuracy: Potts ≈ tuned Tikhonov, below GP and MFI on average.** Potts beats GP on default blob and on TCV hollow,
+  blob and edge. MFI is the most accurate method overall, especially on TCV.
+- **I-sparse gives accurate means but miscalibrated uncertainty.** Its 95% coverage drops to 0.54–0.80 on structured
+  phantoms. Dropping couplings narrows the posterior, so it is not a substitute for the exact posterior.
+
 ## 5b. Ablations (M4)
 
 Source: `experiments/m4_ablations.py` → `results/m4_ablations/ablations_table.md`. Peaked phantom, full schedule.
@@ -157,9 +225,23 @@ Potts wins at low noise and loses at high noise. Its coverage stays 0.98 through
 
 ## 6. Where the gain comes from: positivity, the bound, or discreteness?
 
-Source: `experiments/route2_ablation.py` → `results/route2_ablation/` (3 problems so far).
+Source: `experiments/route2_ablation.py` → `results/route2_ablation/`.
 
-Every row uses the same evidence λ and the same ε_max:
+**Full run: 4 phantoms + 3 random fields, mean over 7 problems:**
+
+| Method | rel-L2 | 95% coverage |
+|---|---|---|
+| Gaussian (= tuned Tikhonov mean) | 0.476 | 0.93 |
+| Truncated ≥ 0 (positivity only) | **0.420** | 0.91 |
+| Truncated [0, ε_max] | 0.449 | 0.89 |
+| Potts K = 4 | 0.461 | 0.80 (not converged) |
+| Potts K = 7 / 8 / 9 | 0.430 / 0.432 / 0.436 | 0.91–0.92 |
+| Potts K = 16 | 0.441 | 0.91 |
+
+Positivity alone gives the largest gain. Discreteness adds nothing, and K = 7–9 are equivalent, so there is no
+special K = 8 effect.
+
+**Earlier 3-problem run.** Every row uses the same evidence λ and the same ε_max:
 
 | | Peaked | Hollow | Random |
 |---|---|---|---|
@@ -204,6 +286,19 @@ Sources: `tomo/ebm_chain.py` docstring; `tests/test_ebm_chain.py`.
 |---|---|---|
 | 16 | 5.8 → 4.9 | 100% |
 | 32 | 1.36 → 0.47 | 78% |
+
+**K_z needed for an exact likelihood under the evidence λ** (`experiments/kz_inflation.py` → `results/kz_inflation/`).
+Inflation is the chord-variance excess after compensation, on peaked:
+
+| K_z | I-chain inflation | I-chain spins / max degree | I-tree inflation | I-tree spins / max degree |
+|---|---|---|---|---|
+| 32 | 5.5 | 74k / 716 | 2.2 | 72k / 468 |
+| 64 | 0.72 | 145k / 1,420 | 0.12 | 141k / 916 |
+| 128 | 0.005 | 287k / 2,828 | 0 | 278k / 1,812 |
+
+Reaching ≤ 10% inflation needs K_z ≈ 128 for the chain and ≈ 64 for the tree. At that size the degree already
+exceeds that of I-dense (2,554) for the chain, and is a third of it for the tree, so the bounded-degree advantage is
+largely gone. Calibration, exactness and low degree are in direct tension.
 
 **The calibrated prior makes it worse.** The softer evidence λ widens the windows. With compensation at K_z = 32, chord variance is inflated by 6.5× for the chain and 3× for the tree, against 1.5× and 1.05× under the discrepancy λ.
 
@@ -263,7 +358,8 @@ So the data-augmentation slowdown is at least about n_eff/f times dense Gibbs, w
 
 Sources: `tomo/embed.py`, `experiments/embed_report.py`, `experiments/embed_sampling.py`.
 
-**Embedding cost.** Copy-node embedding to degree ≤ 16 multiplies the spin count by 4.6× (I-chain, K_z = 16) up to 38× (I-dense). I-chain at K_z = 32 needs 621k spins, more than Z1's 270k. None of the embedded graphs is 2-colourable.
+**Embedding cost.** Copy-node embedding to degree ≤ 16 multiplies the spin count by 4.6× (I-chain, K_z = 16) up to 38× (I-dense).
+I-tree embeds to 190,889 spins at K_z = 16 (5.1×) and 656,301 at K_z = 32 (9.1×). I-chain at K_z = 32 needs 621k spins, more than Z1's 270k. None of the embedded graphs is 2-colourable.
 
 **Sampling the embedded model fails** (tiny problem):
 
@@ -311,13 +407,11 @@ Sources: `tomo/tcv.py`, `experiments/tcv_check.py` → `results/tcv_check/`.
 | Random | 0.19 | 0.11 |
 | Divertor | 0.41 | 0.43 |
 
-Potts and I-dense have not yet been run on TCV.
+See §5a for Potts and I-sparse on TCV.
 
 ## 13. Open items
 
-- Re-run M2 with the evidence λ.
-- Multi-seed statistics: 4 phantoms × 5 seeds and at least 30 random fields.
-- Potts levels K = 7 and 9.
-- Potts and I-dense on TCV.
+- Clean timings on an idle machine. Many of the later runs shared the CPU with unrelated jobs (load 25–55).
+- Speed up Potts on TCV, which takes 81–93 s with 1,148 pixels.
 - Sample the binary-encoded models.
 - Measure laptop power with `powermetrics` instead of assuming 20 W.

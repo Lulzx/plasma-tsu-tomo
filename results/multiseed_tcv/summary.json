@@ -1,0 +1,942 @@
+{
+ "summary": [
+  {
+   "group": "peaked",
+   "method": "tikhonov_gcv",
+   "n": 2,
+   "rel_l2": "0.304 \u00b1 0.016",
+   "rel_l2_median": "0.304",
+   "ssim": "0.539 \u00b1 0.002",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "peaked",
+   "method": "tikhonov_tuned",
+   "n": 2,
+   "rel_l2": "0.299 \u00b1 0.012",
+   "rel_l2_median": "0.299",
+   "ssim": "0.526 \u00b1 0.014",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "peaked",
+   "method": "mfi",
+   "n": 2,
+   "rel_l2": "0.094 \u00b1 0.007",
+   "rel_l2_median": "0.094",
+   "ssim": "0.929 \u00b1 0.020",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "peaked",
+   "method": "gp",
+   "n": 2,
+   "rel_l2": "0.157 \u00b1 0.020",
+   "rel_l2_median": "0.157",
+   "ssim": "0.679 \u00b1 0.064",
+   "coverage68": "0.757 \u00b1 0.094",
+   "coverage95": "0.955 \u00b1 0.004",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "peaked",
+   "method": "potts",
+   "n": 2,
+   "rel_l2": "0.191 \u00b1 0.005",
+   "rel_l2_median": "0.191",
+   "ssim": "0.755 \u00b1 0.017",
+   "coverage68": "0.852 \u00b1 0.006",
+   "coverage95": "0.960 \u00b1 0.002",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "81.797 \u00b1 0.470"
+  },
+  {
+   "group": "peaked",
+   "method": "sparse",
+   "n": 2,
+   "rel_l2": "0.309 \u00b1 0.015",
+   "rel_l2_median": "0.309",
+   "ssim": "0.790 \u00b1 0.007",
+   "coverage68": "0.689 \u00b1 0.002",
+   "coverage95": "0.801 \u00b1 0.010",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "8.529 \u00b1 0.404"
+  },
+  {
+   "group": "hollow",
+   "method": "tikhonov_gcv",
+   "n": 2,
+   "rel_l2": "0.487 \u00b1 0.003",
+   "rel_l2_median": "0.487",
+   "ssim": "0.352 \u00b1 0.011",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "hollow",
+   "method": "tikhonov_tuned",
+   "n": 2,
+   "rel_l2": "0.487 \u00b1 0.003",
+   "rel_l2_median": "0.487",
+   "ssim": "0.346 \u00b1 0.007",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "hollow",
+   "method": "mfi",
+   "n": 2,
+   "rel_l2": "0.391 \u00b1 0.004",
+   "rel_l2_median": "0.391",
+   "ssim": "0.804 \u00b1 0.025",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "hollow",
+   "method": "gp",
+   "n": 2,
+   "rel_l2": "0.638 \u00b1 0.032",
+   "rel_l2_median": "0.638",
+   "ssim": "0.236 \u00b1 0.008",
+   "coverage68": "0.420 \u00b1 0.034",
+   "coverage95": "0.747 \u00b1 0.028",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "hollow",
+   "method": "potts",
+   "n": 2,
+   "rel_l2": "0.372 \u00b1 0.008",
+   "rel_l2_median": "0.372",
+   "ssim": "0.597 \u00b1 0.007",
+   "coverage68": "0.781 \u00b1 0.007",
+   "coverage95": "0.916 \u00b1 0.008",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "81.285 \u00b1 0.115"
+  },
+  {
+   "group": "hollow",
+   "method": "sparse",
+   "n": 2,
+   "rel_l2": "0.518 \u00b1 0.004",
+   "rel_l2_median": "0.518",
+   "ssim": "0.688 \u00b1 0.006",
+   "coverage68": "0.672 \u00b1 0.002",
+   "coverage95": "0.722 \u00b1 0.007",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "8.184 \u00b1 0.072"
+  },
+  {
+   "group": "blob",
+   "method": "tikhonov_gcv",
+   "n": 2,
+   "rel_l2": "0.701 \u00b1 0.002",
+   "rel_l2_median": "0.701",
+   "ssim": "0.451 \u00b1 0.021",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "blob",
+   "method": "tikhonov_tuned",
+   "n": 2,
+   "rel_l2": "0.699 \u00b1 0.001",
+   "rel_l2_median": "0.699",
+   "ssim": "0.445 \u00b1 0.012",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "blob",
+   "method": "mfi",
+   "n": 2,
+   "rel_l2": "0.400 \u00b1 0.007",
+   "rel_l2_median": "0.400",
+   "ssim": "0.842 \u00b1 0.022",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "blob",
+   "method": "gp",
+   "n": 2,
+   "rel_l2": "0.677 \u00b1 0.002",
+   "rel_l2_median": "0.677",
+   "ssim": "0.311 \u00b1 0.009",
+   "coverage68": "0.519 \u00b1 0.003",
+   "coverage95": "0.781 \u00b1 0.001",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "blob",
+   "method": "potts",
+   "n": 2,
+   "rel_l2": "0.558 \u00b1 0.004",
+   "rel_l2_median": "0.558",
+   "ssim": "0.732 \u00b1 0.014",
+   "coverage68": "0.794 \u00b1 0.018",
+   "coverage95": "0.929 \u00b1 0.008",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "83.994 \u00b1 3.772"
+  },
+  {
+   "group": "blob",
+   "method": "sparse",
+   "n": 2,
+   "rel_l2": "0.693 \u00b1 0.001",
+   "rel_l2_median": "0.693",
+   "ssim": "0.727 \u00b1 0.005",
+   "coverage68": "0.639 \u00b1 0.001",
+   "coverage95": "0.683 \u00b1 0.008",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "8.283 \u00b1 0.435"
+  },
+  {
+   "group": "edge",
+   "method": "tikhonov_gcv",
+   "n": 2,
+   "rel_l2": "0.682 \u00b1 0.005",
+   "rel_l2_median": "0.682",
+   "ssim": "0.263 \u00b1 0.003",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "edge",
+   "method": "tikhonov_tuned",
+   "n": 2,
+   "rel_l2": "0.685 \u00b1 0.003",
+   "rel_l2_median": "0.685",
+   "ssim": "0.266 \u00b1 0.005",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "edge",
+   "method": "mfi",
+   "n": 2,
+   "rel_l2": "0.479 \u00b1 0.019",
+   "rel_l2_median": "0.479",
+   "ssim": "0.732 \u00b1 0.005",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "edge",
+   "method": "gp",
+   "n": 2,
+   "rel_l2": "0.668 \u00b1 0.032",
+   "rel_l2_median": "0.668",
+   "ssim": "0.322 \u00b1 0.020",
+   "coverage68": "0.573 \u00b1 0.067",
+   "coverage95": "0.838 \u00b1 0.066",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "edge",
+   "method": "potts",
+   "n": 2,
+   "rel_l2": "0.537 \u00b1 0.008",
+   "rel_l2_median": "0.537",
+   "ssim": "0.447 \u00b1 0.012",
+   "coverage68": "0.765 \u00b1 0.012",
+   "coverage95": "0.901 \u00b1 0.006",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "81.282 \u00b1 0.427"
+  },
+  {
+   "group": "edge",
+   "method": "sparse",
+   "n": 2,
+   "rel_l2": "0.727 \u00b1 0.003",
+   "rel_l2_median": "0.727",
+   "ssim": "0.493 \u00b1 0.002",
+   "coverage68": "0.730 \u00b1 0.005",
+   "coverage95": "0.792 \u00b1 0.002",
+   "rhat_max": "1.002 \u00b1 0.001",
+   "time_s": "8.399 \u00b1 0.483"
+  },
+  {
+   "group": "divertor",
+   "method": "tikhonov_gcv",
+   "n": 2,
+   "rel_l2": "0.405 \u00b1 0.009",
+   "rel_l2_median": "0.405",
+   "ssim": "0.515 \u00b1 0.005",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "divertor",
+   "method": "tikhonov_tuned",
+   "n": 2,
+   "rel_l2": "0.403 \u00b1 0.007",
+   "rel_l2_median": "0.403",
+   "ssim": "0.514 \u00b1 0.006",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "divertor",
+   "method": "mfi",
+   "n": 2,
+   "rel_l2": "0.387 \u00b1 0.009",
+   "rel_l2_median": "0.387",
+   "ssim": "0.634 \u00b1 0.003",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "divertor",
+   "method": "gp",
+   "n": 2,
+   "rel_l2": "0.399 \u00b1 0.013",
+   "rel_l2_median": "0.399",
+   "ssim": "0.476 \u00b1 0.014",
+   "coverage68": "0.808 \u00b1 0.026",
+   "coverage95": "0.972 \u00b1 0.009",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "divertor",
+   "method": "potts",
+   "n": 2,
+   "rel_l2": "0.422 \u00b1 0.003",
+   "rel_l2_median": "0.422",
+   "ssim": "0.490 \u00b1 0.008",
+   "coverage68": "0.761 \u00b1 0.001",
+   "coverage95": "0.939 \u00b1 0.002",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "92.774 \u00b1 0.294"
+  },
+  {
+   "group": "divertor",
+   "method": "sparse",
+   "n": 2,
+   "rel_l2": "0.425 \u00b1 0.010",
+   "rel_l2_median": "0.425",
+   "ssim": "0.495 \u00b1 0.000",
+   "coverage68": "0.651 \u00b1 0.021",
+   "coverage95": "0.889 \u00b1 0.020",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "19.915 \u00b1 0.554"
+  },
+  {
+   "group": "random",
+   "method": "tikhonov_gcv",
+   "n": 8,
+   "rel_l2": "0.222 \u00b1 0.062",
+   "rel_l2_median": "0.214",
+   "ssim": "0.764 \u00b1 0.062",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "random",
+   "method": "tikhonov_tuned",
+   "n": 8,
+   "rel_l2": "0.219 \u00b1 0.063",
+   "rel_l2_median": "0.210",
+   "ssim": "0.763 \u00b1 0.060",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "random",
+   "method": "mfi",
+   "n": 8,
+   "rel_l2": "0.183 \u00b1 0.033",
+   "rel_l2_median": "0.181",
+   "ssim": "0.834 \u00b1 0.047",
+   "coverage68": "-",
+   "coverage95": "-",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "random",
+   "method": "gp",
+   "n": 8,
+   "rel_l2": "0.151 \u00b1 0.046",
+   "rel_l2_median": "0.142",
+   "ssim": "0.870 \u00b1 0.051",
+   "coverage68": "0.671 \u00b1 0.098",
+   "coverage95": "0.922 \u00b1 0.039",
+   "rhat_max": "-",
+   "time_s": "-"
+  },
+  {
+   "group": "random",
+   "method": "potts",
+   "n": 8,
+   "rel_l2": "0.211 \u00b1 0.050",
+   "rel_l2_median": "0.209",
+   "ssim": "0.771 \u00b1 0.041",
+   "coverage68": "0.826 \u00b1 0.035",
+   "coverage95": "0.982 \u00b1 0.009",
+   "rhat_max": "1.002 \u00b1 0.000",
+   "time_s": "87.415 \u00b1 7.907"
+  },
+  {
+   "group": "random",
+   "method": "sparse",
+   "n": 8,
+   "rel_l2": "0.219 \u00b1 0.059",
+   "rel_l2_median": "0.212",
+   "ssim": "0.770 \u00b1 0.051",
+   "coverage68": "0.757 \u00b1 0.044",
+   "coverage95": "0.970 \u00b1 0.013",
+   "rhat_max": "1.005 \u00b1 0.004",
+   "time_s": "13.995 \u00b1 3.843"
+  }
+ ],
+ "wins": [
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_gcv",
+   "group": "peaked",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_gcv",
+   "group": "hollow",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_gcv",
+   "group": "blob",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_gcv",
+   "group": "edge",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_gcv",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_gcv",
+   "group": "random",
+   "wins": 5,
+   "losses": 3,
+   "win_rate": "0.62",
+   "sign_test_p": "0.727"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_gcv",
+   "group": "all",
+   "wins": 13,
+   "losses": 5,
+   "win_rate": "0.72",
+   "sign_test_p": "0.0963"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_tuned",
+   "group": "peaked",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_tuned",
+   "group": "hollow",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_tuned",
+   "group": "blob",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_tuned",
+   "group": "edge",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_tuned",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_tuned",
+   "group": "random",
+   "wins": 5,
+   "losses": 3,
+   "win_rate": "0.62",
+   "sign_test_p": "0.727"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "tikhonov_tuned",
+   "group": "all",
+   "wins": 13,
+   "losses": 5,
+   "win_rate": "0.72",
+   "sign_test_p": "0.0963"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "mfi",
+   "group": "peaked",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "mfi",
+   "group": "hollow",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "mfi",
+   "group": "blob",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "mfi",
+   "group": "edge",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "mfi",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "mfi",
+   "group": "random",
+   "wins": 1,
+   "losses": 7,
+   "win_rate": "0.12",
+   "sign_test_p": "0.0703"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "mfi",
+   "group": "all",
+   "wins": 3,
+   "losses": 15,
+   "win_rate": "0.17",
+   "sign_test_p": "0.00754"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "gp",
+   "group": "peaked",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "gp",
+   "group": "hollow",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "gp",
+   "group": "blob",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "gp",
+   "group": "edge",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "gp",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "gp",
+   "group": "random",
+   "wins": 0,
+   "losses": 8,
+   "win_rate": "0.00",
+   "sign_test_p": "0.00781"
+  },
+  {
+   "ebm": "potts",
+   "baseline": "gp",
+   "group": "all",
+   "wins": 6,
+   "losses": 12,
+   "win_rate": "0.33",
+   "sign_test_p": "0.238"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_gcv",
+   "group": "peaked",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_gcv",
+   "group": "hollow",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_gcv",
+   "group": "blob",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_gcv",
+   "group": "edge",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_gcv",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_gcv",
+   "group": "random",
+   "wins": 6,
+   "losses": 2,
+   "win_rate": "0.75",
+   "sign_test_p": "0.289"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_gcv",
+   "group": "all",
+   "wins": 8,
+   "losses": 10,
+   "win_rate": "0.44",
+   "sign_test_p": "0.815"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_tuned",
+   "group": "peaked",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_tuned",
+   "group": "hollow",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_tuned",
+   "group": "blob",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_tuned",
+   "group": "edge",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_tuned",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_tuned",
+   "group": "random",
+   "wins": 3,
+   "losses": 5,
+   "win_rate": "0.38",
+   "sign_test_p": "0.727"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "tikhonov_tuned",
+   "group": "all",
+   "wins": 5,
+   "losses": 13,
+   "win_rate": "0.28",
+   "sign_test_p": "0.0963"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "mfi",
+   "group": "peaked",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "mfi",
+   "group": "hollow",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "mfi",
+   "group": "blob",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "mfi",
+   "group": "edge",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "mfi",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "mfi",
+   "group": "random",
+   "wins": 1,
+   "losses": 7,
+   "win_rate": "0.12",
+   "sign_test_p": "0.0703"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "mfi",
+   "group": "all",
+   "wins": 1,
+   "losses": 17,
+   "win_rate": "0.06",
+   "sign_test_p": "0.000145"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "gp",
+   "group": "peaked",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "gp",
+   "group": "hollow",
+   "wins": 2,
+   "losses": 0,
+   "win_rate": "1.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "gp",
+   "group": "blob",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "gp",
+   "group": "edge",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "gp",
+   "group": "divertor",
+   "wins": 0,
+   "losses": 2,
+   "win_rate": "0.00",
+   "sign_test_p": "0.5"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "gp",
+   "group": "random",
+   "wins": 0,
+   "losses": 8,
+   "win_rate": "0.00",
+   "sign_test_p": "0.00781"
+  },
+  {
+   "ebm": "sparse",
+   "baseline": "gp",
+   "group": "all",
+   "wins": 2,
+   "losses": 16,
+   "win_rate": "0.11",
+   "sign_test_p": "0.00131"
+  }
+ ]
+}
