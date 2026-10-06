@@ -197,6 +197,8 @@ What the two tables show:
   - Potts took 35–43 s on the synthetic geometry and 81–93 s on TCV in these runs, with other jobs loading the
     machine. Balanced colour blocks (`tomo.sampling.balance_coloring`) remove the padding waste of the block sweep:
     in a same-load A/B, TCV drops from 81 s to 31 s and synthetic from 38 s to 21 s, with identical results.
+  - Repeat timings with measured CPU power (M4 Pro, `powermetrics`, `results/timing/`): Potts 22–24 s and about
+    0.1 kJ per reconstruction on synthetic, 32–33 s and 0.11–0.14 kJ on TCV; I-sparse 9–13 s and about 70 J.
   - I-sparse takes 8–20 s.
 
 ### Ablations (M4, peaked phantom)

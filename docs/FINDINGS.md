@@ -91,7 +91,25 @@ Same-load A/B (load 8–10, full schedule 2,000 + 5,000 sweeps, 16 chains, peake
 | Default (806 pixels) | 38.0 s | 20.7 s | 1.8× |
 | TCV (1,148 pixels) | 81.3 s | 31.5 s | 2.6× |
 
-R-hat (1.002), rel-L2 and coverage are unchanged. Clean multi-repeat timings: `results/timing/timing.md`.
+R-hat (1.002), rel-L2 and coverage are unchanged.
+
+**Repeat timings with measured CPU power** (`results/timing/timing.md`). Apple M4 Pro laptop, 3 repeats each, posterior
+only (no MAP anneal), 1-minute load 3.4 at the start and 4–10 during the run (the benchmark's own threads included).
+CPU package power from `powermetrics --samplers cpu_power -i 1000`, sampled throughout every run; an idle
+baseline of 0.57 W is subtracted for the net energy.
+
+| Geometry | Variant | Wall time (s) | CPU power (W) | Net CPU energy per reconstruction (J) |
+|---|---|---|---|---|
+| Default | Potts (balanced) | 22.4–24.3 | 5.2–5.8 | 104–126 |
+| Default | Potts (greedy blocks) | 39.3–40.3 | 5.9–7.4 | 209–276 |
+| Default | I-sparse | 8.8–10.3 | 6.9–8.1 | 64–69 |
+| TCV | Potts (balanced) | 31.5–33.2 | 4.2–4.8 | 113–140 |
+| TCV | Potts (greedy blocks) | 82.8–83.7 | 5.2–5.6 | 384–416 |
+| TCV | I-sparse | 11.3–12.8 | 6.5–7.0 | 73–75 |
+
+Every run has R-hat ≤ 1.002. Balanced blocks cut the energy per reconstruction about 3× on TCV. A converged Potts
+posterior costs about 0.1 kJ of laptop CPU, against the 39 nJ TSU estimate (§11, specification preset): a ratio of
+about 3 × 10⁹, though the TSU figure is a projection and the CPU figure includes 16 chains and a 7,000-sweep schedule.
 
 ## 5. Main EBM comparison (M3)
 
@@ -450,7 +468,7 @@ See §5a for Potts and I-sparse on TCV.
 
 ## 13. Open items
 
-- Clean timings on an idle machine. Many of the later runs shared the CPU with unrelated jobs (load 25–55).
+- ~~Clean timings~~: done, `results/timing/` (§4a); the machine was not reserved, so the load is recorded per run.
 - ~~Speed up Potts on TCV~~: done, balanced colour blocks (§4a), 81 s → 31 s.
 - ~~Sample the binary-encoded models~~: done (§10).
-- Measure laptop power with `powermetrics` instead of assuming 20 W.
+- ~~Measure laptop power~~: done, 4–8 W CPU package power while sampling (§4a), not the assumed 20 W.

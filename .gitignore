@@ -15,3 +15,6 @@ results/*_quick/
 
 # downloaded third-party data
 /data/
+/pm_run.log
+/kek.txt
+/pm_*.log
