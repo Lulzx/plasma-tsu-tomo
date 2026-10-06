@@ -25,9 +25,11 @@ model:
   A: null          # domain-wall penalty; null => auto (> largest single-level energy change)
   sparse_threshold: 0.05   # I-sparse: drop T^T W T pixel couplings < 0.05*max|Q_jk| (linear-compensated); see ebm_ising
   sparse_radius: null
-  tau: 0.5         # I-chain link std in units of the z-grid spacing dz_k (tau_mode: dz); effective chord noise^2 = sigma^2 + sum_k tau_k^2
+  tau: 0.75        # I-chain link std in units of the z-grid spacing dz_k (tau_mode: dz). With chain_compensate the marginal chord variance stays sigma^2 for sum_k tau_k^2 < sigma^2; else the chord variance is inflated by sum tau^2/sigma^2 (clamped)
   tau_mode: dz     # dz | sigma | signal  (see tomo/ebm_chain.py)
-  Kz: 16
+  Kz: 32           # at Kz=16 sum tau^2 ~ 2.6-6 sigma^2 so compensation is fully clamped; Kz=32 -> 0.6-1.4 (partly admissible)
+  chain_compensate: true   # s_i^2 = sigma_i^2 - sum_k tau_ik^2 (floored at chain_comp_floor*sigma^2): exact marginal likelihood, see tomo/ebm_chain.py
+  chain_comp_floor: 0.1
 schedule:
   posterior: {n_warmup: 2000, n_samples: 500, steps_per_sample: 10}
   anneal: {beta_min: 0.1, beta_max: 50.0, n_betas: 30, sweeps_per_beta: 20}

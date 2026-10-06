@@ -199,3 +199,49 @@ def test_parallel_tempering_visits_both_modes(backend):
     assert res["betas"][res["target"]] == 1.0
     # cold replica is not stuck: crossing count large
     assert np.mean((np.diff(np.sign(mag), axis=1) != 0).sum(1)) >= 2
+
+
+# ------------------------------------------------------------------ batched jax path (buckets / threads)
+def _hub_ising(n, seed):
+    """Heterogeneous degrees (hubs + leaves) so the ELL path builds several degree buckets."""
+    rng = np.random.default_rng(seed)
+    Jd = np.zeros((n, n))
+    Jd[0, 1:] = rng.normal(0, 0.4, n - 1)
+    Jd[1, 2:6] = rng.normal(0, 0.4, 4)
+    Jd[7, 9] = 0.5
+    return IsingProblem.from_dense(rng.normal(0, 0.6, n), Jd + Jd.T, offset=0.0)
+
+
+@pytest.mark.parametrize("dense,threads", [(False, 1), (False, 4), (True, 2), (None, 8)])
+def test_jax_batched_buckets_and_threads_match_exact(dense, threads, monkeypatch):
+    monkeypatch.setattr(IsingSampler, "_bucket_min", 2)
+    n = 11
+    prob = _hub_ising(n, 3)
+    colors = greedy_coloring(n, prob.edges)
+    m_ex, C_ex, _ = exact_stats(prob)
+    sm = IsingSampler(prob, colors, backend="jax", dense=dense, threads=threads)
+    if dense is False:
+        assert len(sm._bdata) > sm.n_blocks      # degree buckets split at least one colour block
+    C, S = 64, 400
+    res = run_ising(prob, colors, (100, S, 2), C, jax.random.key(11), sampler=sm)
+    s = np.where(res["samples"], 1.0, -1.0)
+    assert s.shape == (C, S, n)
+    cm = s.mean(1)
+    se = cm.std(0, ddof=1) / np.sqrt(C)
+    assert np.all(np.abs(cm.mean(0) - m_ex) < 4.5 * se + 1e-3)
+    cc = np.einsum("csi,csj->cij", s, s) / S
+    se2 = cc.std(0, ddof=1) / np.sqrt(C)
+    off = ~np.eye(n, dtype=bool)
+    assert np.all((np.abs(cc.mean(0) - C_ex) < 4.5 * se2 + 1e-3)[off])
+    assert np.allclose(res["energy_trace"], prob.energy(res["samples"]), atol=1e-3)
+
+
+def test_jax_batched_chains_independent_and_deterministic():
+    n = 8
+    prob = random_ising(n, 12)
+    colors = greedy_coloring(n, prob.edges)
+    sm = IsingSampler(prob, colors, backend="jax", threads=2)
+    a = run_ising(prob, colors, (5, 20, 1), 8, jax.random.key(0), sampler=sm)["samples"]
+    b = run_ising(prob, colors, (5, 20, 1), 8, jax.random.key(0), sampler=sm)["samples"]
+    assert np.array_equal(a, b)
+    assert not np.array_equal(a[0], a[1])   # distinct chains

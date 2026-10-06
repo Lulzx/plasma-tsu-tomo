@@ -359,6 +359,8 @@ class IsingSampler:
                                    nbr=jnp.asarray(nbr), val=jnp.asarray(val)))
         return blocks
 
+    _bucket_min = 32   # ELL: colour blocks with fewer nodes are not split by degree
+
     @staticmethod
     def _degree_buckets(deg, ratio=0.6, max_buckets=8):
         """Split nodes (sorted by degree, descending) into groups whose padding waste is bounded."""
@@ -380,17 +382,17 @@ class IsingSampler:
         n = p.n
         J = p.J_sparse()
         if dense is None:
-            dense = (J.nnz > 0.25 * n * n) and (n * n * 4 <= 2e9)
+            dense = (J.nnz > 0.05 * n * n) and (n * n * 4 <= 2e9)
         self._dense = dense
         self._legacy = None
         h32 = np.asarray(p.h, np.float32)
         deg_all = np.diff(J.indptr)
         groups = []                                   # node-id arrays, in sweep order
         for b in self.blocks_idx:
-            if dense or len(b) <= 1:
+            if dense or len(b) < self._bucket_min:
                 groups.append(b)
             else:
-                groups += [b[g] for g in self._degree_buckets(deg_all[b])]
+                groups += [b[g] for g in self._degree_buckets(deg_all[b], max_buckets=min(8, max(1, len(b) // (self._bucket_min // 2))))]
         perm = np.concatenate(groups) if groups else np.zeros(0, np.int64)
         inv = np.empty(n, np.int64)
         inv[perm] = np.arange(n)

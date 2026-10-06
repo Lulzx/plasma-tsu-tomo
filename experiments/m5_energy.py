@@ -99,6 +99,7 @@ def main():
             md.append(f"- {r['variant']}: {r['sweeps']} sweeps -- {r['sweeps_basis']}")
     md.append("\n## Laptop and GPU comparison\n")
     md.append(POWERMETRICS_NOTE + "\n")
+    md.append("Caveat: the chain variant's measured time_s includes model build, Tikhonov warm start and JIT compile (the other variants exclude compile), so its laptop time/energy is an overestimate.\n")
     md.append("GPU: tomo.energy.gpu_mcmc_estimate (op-count model: 2*degree+10 flops/update, 1e-11 J/flop, 10 TFLOP/s peak at 10% efficiency, 400 GB/s memory); "
               "energy is flop-based (lower bound when memory bound). Laptop time apportioned between posterior and MAP by sweeps; spec spins/blocks for Potts count 'categorical' sites with K levels, "
               "so TSU numbers for Potts assume a (hypothetical) categorical sampler cell and are not hardware-faithful.\n")

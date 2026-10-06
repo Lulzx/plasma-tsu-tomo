@@ -510,6 +510,7 @@ def sample_chain(problem, cfg=None, key=None, backend: str = "jax", tau=None, *,
     t_all = time.perf_counter()
     if built is None:
         prob, meta = build_ising_chain(problem, K, lam, A, tau, Kz, tau_mode=tau_mode, group=group, A_z=A_z, compensate=compensate,
+                                       **({"comp_floor": float(m["chain_comp_floor"])} if "chain_comp_floor" in m and "comp_floor" not in build_kw else {}),
                                        eps_max_factor=m.get("eps_max_factor", 1.2), **build_kw)
     else:
         prob, meta = built
@@ -518,6 +519,7 @@ def sample_chain(problem, cfg=None, key=None, backend: str = "jax", tau=None, *,
     sm = IsingSampler(prob, meta["colors"], backend=backend)
     k_pt, k_an, k_j = jax.random.split(key, 3)
 
+    init_mode = init
     # warm starts (C, n)
     rng = np.random.default_rng(int(jax.random.randint(k_j, (), 0, 2 ** 30)))
     x0 = np.tile(setup.x0, (C, 1)).astype(np.int64)
@@ -596,7 +598,7 @@ def sample_chain(problem, cfg=None, key=None, backend: str = "jax", tau=None, *,
                       eff_noise_ratio=meta["eff_noise_ratio"], tau2_over_sigma2=meta["tau2_over_sigma2"],
                       compensate=compensate, comp_clamped_frac=meta["comp_clamped_frac"], n_aux=L, chain_invalid_frac=inv_z, z_edge_frac=z_edge, dz_over_sigma=meta["dz_over_sigma"], Kz=Kz,
                       A=meta["A"], A_z=meta["A_z"], sweeps_to_converge=s2c, frozen_frac=frozen, rhat_med=rhat_med, rhat_q95=rhat_q95,
-                      converged=converged, invalid_ok=invalid_ok, init=init,
+                      converged=converged, invalid_ok=invalid_ok, init=init_mode, rhat_nonfinite_frac=float(np.mean(~np.isfinite(rh))),
                       sweeps_total=n_w + n_s * n_t, sample_time=t_samp, anneal_time=t_an,
                       map_energy=best_e, build_time=sm.build_time, backend=backend, lam=meta["lam"],
                       eps_max=setup.eps_max, **extra_pt)

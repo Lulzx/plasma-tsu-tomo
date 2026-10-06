@@ -89,7 +89,8 @@ def main():
           f"Variants: {variants}. Schedule: posterior {sc['posterior']}, {sc['n_chains']} chains, anneal {sc['anneal']}, K={cfg['model']['K']}.\n",
           f"**Subsampling:** EBM runs on the 4 phantoms + {nr} random fields (m2 baselines use {cfg['experiments']['n_random']}). "
           "Baselines in this table use the same problems and noise draws. `*_map` rows are the annealed MAP estimate. "
-          "time = sampling wall time (no compile).\n"]
+          "time_s = sampling+anneal time reported by the sampler; for potts/dense/sparse this excludes JIT compile, but for **chain** it includes model build, "
+          "Tikhonov warm start and JIT compile (tomo/ebm_chain.py measures from function entry), so chain time_s is NOT comparable and overstates sampling cost.\n"]
     if failures:
         md.append("## FAILURES\n")
         md.append(md_table(failures, ["problem", "variant", "error"]))

@@ -38,6 +38,8 @@ def main():
     args = ap.parse_args()
     cfg, out = setup(args, SCRIPT)
     which = args.which.split(",")
+    if [w for w in which if w not in ALL]:
+        raise SystemExit(f"unknown --which {[w for w in which if w not in ALL]}; choose from {ALL}")
     kv = args.variants.split(",")
     ex = cfg["experiments"]
     phs = ex["ablation_phantoms"] if not args.quick else ex["ablation_phantoms"][:1]
