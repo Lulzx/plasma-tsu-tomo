@@ -27,7 +27,7 @@ def test_prepare(setup, tiny_problem):
     assert tiny_problem.eps_max == s.eps_max and s.Delta == pytest.approx(s.eps_max / (K - 1))
     assert s.lam == s.tik["lam"] > 0 and s.x0.min() >= 0 and s.x0.max() <= K - 1
     assert prepare(tiny_problem, K, lam=3.0).lam == 3.0
-    assert reduced_chi2(tiny_problem.T, tiny_problem.b, tiny_problem.sigma, s.eps_tik) == pytest.approx(1.0, abs=0.05)
+    assert reduced_chi2(tiny_problem.T, tiny_problem.b, tiny_problem.sigma, s.eps_tik) < 1.05  # evidence lambda <= discrepancy lambda
 
 
 def test_quadratic_form_exact(setup, tiny_problem):

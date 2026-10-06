@@ -314,7 +314,7 @@ def build_ising_chain(problem, K, lam=None, A=None, tau=None, Kz=16, *, tau_mode
                       compensate=False, comp_floor=0.1):
     """Build the I-chain Ising model. Returns ``(IsingProblem, meta)``.
 
-    ``lam=None`` -> discrepancy-principle Tikhonov lambda (via ``ebm_common.prepare``); ``A`` /
+    ``lam=None`` -> tuned-Tikhonov (evidence) lambda (via ``ebm_common.prepare``); ``A`` /
     ``A_z`` are the pixel / chain domain-wall penalties (None -> 'typical' warm-start estimate
     (see module docstring; the worst-case bound is only used if explicitly requested via ``ebm_common.auto_A``); numbers are also accepted); ``tau`` is
     in units set by ``tau_mode`` (see module docstring; default ``'dz'``: tau_k = tau * dz_k,

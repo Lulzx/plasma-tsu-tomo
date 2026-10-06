@@ -20,7 +20,7 @@ noise:
   calib_offset: 0.0
 model:
   K: 8
-  lam: null        # null => use GCV lambda from Tikhonov (rescaled to level units)
+  lam: null        # null => tuned-Tikhonov lambda = max Gaussian marginal likelihood (evidence); data only
   eps_max_factor: 1.2   # eps_max = factor * max(Tikhonov estimate clipped >= 0)
   A: null          # domain-wall penalty; null => auto (> largest single-level energy change)
   sparse_threshold: 0.05   # I-sparse: drop T^T W T pixel couplings < 0.05*max|Q_jk| (linear-compensated); see ebm_ising
@@ -40,8 +40,8 @@ experiments:         # used only by experiments/*.py
   phantoms: [peaked, hollow, blob, edge]
   seed0: 1000          # random field k uses problem seed seed0 + k (phantom rng and noise rng derive from it)
   n_random: 200        # random fields for the cheap baselines (m2)
-  n_random_ebm: 20     # random fields for the expensive EBM comparison (m3 --n-random default)
-  variants: [potts, dense, sparse, chain]
+  n_random_ebm: 8      # random fields for the expensive EBM comparison (m3 --n-random default; logged as subsampled)
+  variants: [potts, dense, chain, tree]   # sparse is covered by the m4 threshold ablation
   ablation_phantoms: [peaked]
   noise_levels: [0.01, 0.03, 0.05, 0.10]
   K_values: [4, 8, 16]

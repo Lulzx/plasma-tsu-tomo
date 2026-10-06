@@ -1,4 +1,4 @@
-"""M3: EBM variants (Potts, dense/sparse Ising, I-chain) vs baselines on the SAME problems and noise draws."""
+"""M3: EBM variants (Potts, dense/sparse Ising, I-chain, I-tree) vs baselines on the SAME problems and noise draws."""
 from __future__ import annotations
 
 import os
@@ -16,7 +16,7 @@ DIAG = ["rhat_max", "rhat_median", "invalid_frac", "n_spins", "n_blocks", "max_d
 
 def main():
     ap = make_parser(SCRIPT, __doc__)
-    ap.add_argument("--variants", default=None, help="comma list from potts,dense,sparse,chain (default: config experiments.variants)")
+    ap.add_argument("--variants", default=None, help="comma list from potts,dense,sparse,chain,tree (default: config experiments.variants)")
     ap.add_argument("--n-random", type=int, default=None,
                     help="random fields in addition to the 4 phantoms (default experiments.n_random_ebm=20; EBMs cost ~1 min each)")
     args = ap.parse_args()

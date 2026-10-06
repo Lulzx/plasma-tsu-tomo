@@ -12,6 +12,7 @@ Variants
             centres are further than ``radius`` metres apart; Laplacian (4-neighbour) pairs and
             intra-pixel bit couplings are always kept.  The model is then *approximate*.
 ``chain``   I-chain (``tomo.ebm_chain``; lazily imported).
+``tree``    I-tree (``tomo.ebm_tree``; lazily imported).
 
 Blocking: a block must be an independent set of the *actual* coupling graph, so the 2-colour
 pixel checkerboard of the spec is not valid here.  We colour the bit graph with greedy colouring
@@ -21,7 +22,7 @@ asserted valid.
 
 Caveats: the sparse variant is approximate in posterior spread/coverage (linearisation drops the
 covariance of dropped pairs; std ~0.93 of dense measured), use it for means only.  The Tikhonov rel-L2
-quoted with Ising results uses the discrepancy-principle lambda of ``ec.prepare`` (not the GCV lambda of
+quoted with Ising results uses the tuned (evidence) lambda of ``ec.prepare`` (not the GCV lambda of
 baselines.py).  ``overdispersed=True`` starts half of the chains from random bits for an honest R-hat.
 
 Decoding invalid samples: a pixel whose bits are not of the form 1..10..0 is decoded as its bit
@@ -119,7 +120,7 @@ def _offdiag_pairs(Q):
 def build_ising_dense(problem, K, lam=None, A=None, setup=None, eps_max_factor=1.2):
     """Full domain-wall Ising model -> (IsingProblem, meta).
 
-    ``lam=None`` uses the Tikhonov (discrepancy) lambda from ``ebm_common.prepare``; ``A=None`` the
+    ``lam=None`` uses the tuned-Tikhonov (evidence) lambda from ``ebm_common.prepare``; ``A=None`` the
     ``auto_A`` bound.  meta has n_blocks, max_degree, mean_degree, n_edges, colors, setup, ...
     """
     setup = _prepare(problem, K, lam, setup, eps_max_factor)
@@ -225,7 +226,7 @@ def posterior_bias(res, ref, truth=None):
 def sample_ising_variant(problem, variant, cfg, key, backend=None, setup=None, schedule=None, anneal=None,
                          n_chains=None, do_map=True, threshold=None, radius=None, A=None, sampler=None,
                          compensate="linear", overdispersed=False, **kw):
-    """Posterior sampling + annealed MAP for variant in {'dense','sparse','chain'}.
+    """Posterior sampling + annealed MAP for variant in {'dense','sparse','chain','tree'}.
 
     Returns the standard result dict (mean, std, map, samples (C,S,N) emissivity, rhat, energy_trace,
     n_blocks, n_spins, max_degree, time, invalid_frac) plus extras: meta, setup, levels_mean,
@@ -240,6 +241,15 @@ def sample_ising_variant(problem, variant, cfg, key, backend=None, setup=None, s
         if backend is not None:
             kw["backend"] = backend
         return sample_chain(problem, cfg, key, **kw)
+    if variant == "tree":
+        from .ebm_tree import sample_tree
+        if backend is not None:
+            kw["backend"] = backend
+        if schedule is not None:
+            kw["schedule"] = schedule
+        if n_chains is not None:
+            kw["n_chains"] = n_chains
+        return sample_tree(problem, cfg, key, **kw)
     if variant not in ("dense", "sparse"):
         raise ValueError(f"unknown variant {variant!r}")
     backend = backend or "jax"

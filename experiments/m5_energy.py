@@ -33,12 +33,49 @@ def load_measured(path, cfg):
     return out or None
 
 
+def embedded_counts(variant, cfg, D=16):
+    """Physical (copy-node embedded, degree <= D) spin count and greedy colour count for a variant, or None.
+
+    Builds the default-problem model (peaked phantom, seed 0) with the config's K / Kz and embeds it with
+    tomo.embed (tree copies).  The embedded colour count is the greedy colouring of the physical graph
+    (NOT 2; a 2-colourable layout would need extra relay spins, see tomo.embed.bipartite_relay_estimate).
+    """
+    try:
+        from tomo import ebm_chain, ebm_ising
+        from tomo.embed import embed_bounded_degree
+        from tomo.forward import make_problem
+    except Exception as e:  # noqa: BLE001
+        log(f"embedding unavailable: {e!r}")
+        return None
+    problem = make_problem(cfg, "peaked", 0)
+    m = cfg["model"]
+    K = int(m["K"])
+    base = variant.split(" ")[0]
+    if base == "chain":
+        Kz = 16 if "placeholder" in variant else int(m["Kz"])
+        prob, _ = ebm_chain.build_ising_chain(problem, K, None, None, m["tau"], Kz, tau_mode=m["tau_mode"],
+                                              compensate=m["chain_compensate"], comp_floor=m["chain_comp_floor"])
+    elif base == "dense":
+        prob, _ = ebm_ising.build_ising_dense(problem, K)
+    elif base == "sparse":
+        prob, _ = ebm_ising.build_ising_sparse(problem, K)
+    elif base == "tree":
+        from tomo import ebm_tree
+        prob, _ = ebm_tree.build_ising_tree(problem, K)
+    else:
+        return None
+    pp, em = embed_bounded_degree(prob, D, topology="tree")
+    return dict(n_phys=pp.n, n_colors_phys=em["n_colors"], max_chain=em["max_chain_len"], n_logical=prob.n)
+
+
 def main():
     ap = make_parser(SCRIPT, __doc__)
     ap.add_argument("--m3-results", default=None, help="m3 results.json (default results/m3_ebm[_quick]/results.json)")
     ap.add_argument("--cpu-power-w", type=float, default=None, help="assumed CPU package power (default experiments.cpu_power_W=20)")
     ap.add_argument("--powermetrics-log", default=None, help="powermetrics log to parse for CPU power")
     ap.add_argument("--sens-variant", default="chain")
+    ap.add_argument("--no-embed", action="store_true", help="skip the degree-16 embedding (slow for chain/dense)")
+    ap.add_argument("--D", type=int, default=16, help="hardware degree bound for the embedding")
     args = ap.parse_args()
     cfg, out = setup(args, SCRIPT)
     m3 = args.m3_results or os.path.join(ROOT, "results", "m3_ebm" + ("_quick" if args.quick else ""), "results.json")
@@ -112,6 +149,29 @@ def main():
     save_csv(sens["rows"], f"{out}/sensitivity.csv")
     md.append(f"## Sensitivity ({sv}, posterior, {base['sweeps']} sweeps, {base['n_chains']} chains)\n")
     md.append(md_table(sens["rows"], ["E_cell_factor", "E_cell_J", "t_update_s", "energy_J", "latency_s"]))
+    # ---- hardware presets: logical vs embedded, with / without readout ----
+    prow = []
+    for v, m in meas.items():
+        bp = [r for r in rows if r["variant"] == v and r["task"] == "posterior"]
+        if not bp:
+            continue
+        sw = bp[0]["sweeps"]
+        emb = None if args.no_embed else embedded_counts(v, cfg, args.D)
+        for r in En.compare_presets(m["n_spins"], sw, m["n_chains"], m["n_blocks"],
+                                    n_physical_spins=emb["n_phys"] if emb else None,
+                                    n_blocks_physical=emb["n_colors_phys"] if emb else None):
+            prow.append({"variant": v, **r, "n_phys": emb["n_phys"] if emb else None})
+    if prow:
+        save_csv(prow, f"{out}/energy_presets.csv")
+        md.append("\n## Hardware presets (tomo.energy.HARDWARE): logical vs embedded, with / without readout\n")
+        for k, h in En.HARDWARE.items():
+            md.append(f"- **{k}**: {h['source']}")
+        md.append("\nSweep counts are the posterior sweeps above (placeholders until convergence is measured). "
+                  "'logical' rows use the unembedded spin/colour counts (not hostable on Z1: degree > 16); 'embedded' rows use the "
+                  f"degree-{args.D} copy-node embedded spin count and its greedy colour count; z1_2608 latency charges 20 ns per sweep only if "
+                  "the graph has <= 2 colours, otherwise 10 ns per colour block (flag not_2colourable). Readout = one full read of every "
+                  "physical node per chain, 25 us per frame.\n")
+        md.append(md_table(prow, ["variant", "preset", "layout", "readout", "n_spins", "n_blocks", "n_sweeps", "energy_J", "latency_s", "not_2colourable"]))
     with open(f"{out}/energy_table.md", "w") as f:
         f.write("\n".join(md))
 

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tomo.baselines import discrepancy_lambda, lcurve_lambda, tuned_tikhonov, default_lams, gcv_lambda, gp_tomography, mfi, tikhonov
+from tomo.baselines import discrepancy_lambda, evidence_lambda, lcurve_lambda, tuned_tikhonov, default_lams, gcv_lambda, gp_tomography, mfi, tikhonov
 from tomo.forward import make_problem
 from tomo.metrics import coverage, rel_l2
 
@@ -63,5 +63,23 @@ def test_lambda_methods(problem):
     assert reduced_chi2(p.T, p.b, p.sigma, rg["mean"]) < 0.1  # GCV overfits (M << N)
     rl = tikhonov(p.T, p.b, p.sigma, p.L, method="lcurve")
     assert np.isfinite(rl["lam"]) and rl["lam"] == lcurve_lambda(p.T, p.b, p.sigma, p.L)
-    t = tuned_tikhonov(p.T, p.b, p.sigma, p.L)
+    t = tuned_tikhonov(p.T, p.b, p.sigma, p.L, method="discrepancy")
     assert t["method"] == "discrepancy" and abs(t["chi2_red"] - 1) < 0.02 and _rel(t["mean"], p) < 0.35
+    te = tuned_tikhonov(p.T, p.b, p.sigma, p.L)  # default: evidence
+    assert te["method"] == "evidence" and te["lam"] == evidence_lambda(p.T, p.b, p.sigma, p.L)
+    assert rg["lam"] < te["lam"] < rd["lam"] and _rel(te["mean"], p) < 0.35
+
+
+def test_evidence_lambda_recovers_prior_precision():
+    """Data drawn from the model's own prior: the evidence maximiser lands near the true precision."""
+    rng = np.random.default_rng(0)
+    N, M, lam_true = 40, 30, 4.0
+    T = rng.normal(size=(M, N))
+    L = np.eye(N)
+    sigma = np.full(M, 0.5)
+    ests = []
+    for _ in range(20):
+        eps = rng.normal(size=N) / np.sqrt(lam_true)
+        b = T @ eps + sigma * rng.normal(size=M)
+        ests.append(evidence_lambda(T, b, sigma, L))
+    assert 0.5 * lam_true < np.exp(np.mean(np.log(ests))) < 2.0 * lam_true

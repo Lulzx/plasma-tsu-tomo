@@ -269,7 +269,9 @@ def test_compensation_toy_chord():
 def test_compensation_build(tiny_problem):
     """Compensated model: s_i^2 + sum tau^2 == sigma^2 when admissible; clamp reported otherwise; energy consistent."""
     sig = np.asarray(tiny_problem.sigma)
-    prob, meta = build_ising_chain(tiny_problem, K, None, None, 0.1, KZ, tau_mode="dz", compensate=True)
+    from tomo.baselines import tuned_tikhonov
+    lam = tuned_tikhonov(tiny_problem.T, tiny_problem.b, tiny_problem.sigma, tiny_problem.L, method="discrepancy")["lam"]
+    prob, meta = build_ising_chain(tiny_problem, K, lam, None, 0.1, KZ, tau_mode="dz", compensate=True)
     ch, tau = meta["lay"]["chord"], meta["tau_i"]
     S = np.bincount(ch, weights=tau ** 2, minlength=len(sig))
     cw = meta["chords_with"]

@@ -134,33 +134,69 @@ def lcurve_lambda(T, b, sigma, L, lams=None) -> float:
     return float(lams[int(np.argmax(kappa))])
 
 
+def _evidence_curve(s, uty, perp, lams):
+    """Log marginal likelihood log p(b | lam) (up to a constant) of the Gaussian model.
+
+    Prior eps ~ N(0, (lam Lr)^-1), whitened data y = A eps + n, n ~ N(0, I). In the penalty-transformed
+    basis B = A C^{-T} (Lr = C C^T) the prior is u ~ N(0, I/lam), so y ~ N(0, B B^T / lam + I), which is
+    diagonal in the left singular vectors of B.
+    """
+    s2 = s ** 2
+    out = np.empty(len(lams))
+    for i, lam in enumerate(lams):
+        v = s2 / lam + 1.0
+        out[i] = -0.5 * (np.sum(np.log(v)) + np.sum(uty ** 2 / v) + perp)
+    return out
+
+
+def evidence_lambda(T, b, sigma, L, lams=None) -> float:
+    """Empirical-Bayes lambda: maximiser of the Gaussian marginal likelihood p(b | lam).
+
+    Unlike GCV and the discrepancy principle, this treats lam as the prior precision of the
+    posterior that the EBMs sample, so it is the natural choice when the posterior's
+    uncertainty (coverage) matters. Uses no ground truth.
+    """
+    s, uty, perp, lams = _svd_setup(T, b, sigma, L, lams)
+    ev = _evidence_curve(s, uty, perp, lams)
+    i = int(np.argmax(ev))
+    if 0 < i < len(lams) - 1:  # parabolic refinement in log lam
+        x = np.log(lams[i - 1:i + 2])
+        a, bq, _ = np.polyfit(x, ev[i - 1:i + 2], 2)
+        if a < 0:
+            return float(np.exp(np.clip(-bq / (2 * a), x[0], x[2])))
+    return float(lams[i])
+
+
 def tikhonov(T, b, sigma, L, lam=None, method="gcv") -> dict:
     """Tikhonov solution of (T^T W T + lam L) eps = T^T W b, W = diag(1/sigma^2).
 
-    lam=None selects lam with ``method`` in {'gcv' (default), 'discrepancy', 'lcurve'}.
+    lam=None selects lam with ``method`` in {'gcv' (default), 'discrepancy', 'lcurve', 'evidence'}.
     The estimate is not constrained to be positive.
     """
     t0 = time.perf_counter()
     A, y = _whiten(T, b, sigma)
     Lr = _penalty(L)
     if lam is None:
-        pick = {"gcv": gcv_lambda, "discrepancy": discrepancy_lambda, "lcurve": lcurve_lambda}[method]
+        pick = {"gcv": gcv_lambda, "discrepancy": discrepancy_lambda, "lcurve": lcurve_lambda,
+                "evidence": evidence_lambda}[method]
         lam = pick(T, b, sigma, L)
     x = _solve(A, y, Lr, lam)
     return {"mean": x, "lam": float(lam), "time": time.perf_counter() - t0}
 
 
-def tuned_tikhonov(T, b, sigma, L) -> dict:
+def tuned_tikhonov(T, b, sigma, L, method="evidence") -> dict:
     """The data-driven Tikhonov used as 'tuned Tikhonov' and as the EBM warm start / lambda source.
 
-    Uses the discrepancy principle (reduced chi^2 = 1) -- see the lambda study in the module tests /
-    report: GCV drives chi^2/M to ~0.01 because M=72 << N=806 makes the data interpolable, whereas the
-    discrepancy lambda matches the stated noise level. Returns tikhonov() dict plus 'method' and
-    'chi2_red'. Uses no ground truth.
+    Default: empirical-Bayes lambda (maximum Gaussian marginal likelihood, ``evidence_lambda``). lam is
+    then the prior precision of the posterior the EBMs sample, and the exact Gaussian posterior is
+    calibrated: on 30 random fields its 95% intervals cover 0.95 of pixels, against 0.70 with the
+    discrepancy-principle lambda, which is 6-10x stiffer and was the previous default. Accuracy also
+    improves (mean rel-L2 0.336 vs 0.353). ``method='discrepancy'`` (reduced chi^2 = 1) remains
+    available. Returns the tikhonov() dict plus 'method' and 'chi2_red'. Uses no ground truth.
     """
-    r = tikhonov(T, b, sigma, L, method="discrepancy")
+    r = tikhonov(T, b, sigma, L, method=method)
     res = (np.asarray(b, float) - np.asarray(T, float) @ r["mean"]) / np.asarray(sigma, float)
-    r["method"] = "discrepancy"
+    r["method"] = method
     r["chi2_red"] = float(np.mean(res ** 2))
     return r
 

@@ -1,4 +1,4 @@
-"""M2: classical baselines (Tikhonov GCV / tuned-discrepancy, MFI, GP) on the 4 phantoms + N random fields."""
+"""M2: classical baselines (Tikhonov GCV / tuned (evidence), MFI, GP) on the 4 phantoms + N random fields."""
 from __future__ import annotations
 
 import time

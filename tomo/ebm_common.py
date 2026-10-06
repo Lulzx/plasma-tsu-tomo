@@ -99,7 +99,7 @@ def prepare(problem, K, lam=None, eps_max_factor=1.2) -> EBMSetup:
     """Tuned-Tikhonov warm start, eps_max (data only), Delta, lam and the quadratic form.
 
     eps_max = factor * max(clip(Tikhonov, 0)) and is stored on ``problem.eps_max``.
-    lam=None uses the Tikhonov (discrepancy-principle) lambda; a given lam is used as is, but the
+    lam=None uses the tuned-Tikhonov (empirical-Bayes evidence) lambda; a given lam is used as is, but the
     warm start is always the tuned Tikhonov solution. No ground truth is used.
     """
     tik = tuned_tikhonov(problem.T, problem.b, problem.sigma, problem.L)

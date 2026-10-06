@@ -31,11 +31,11 @@ OI = {"black": "#000000", "orange": "#E69F00", "sky": "#56B4E9", "green": "#009E
       "yellow": "#F0E442", "blue": "#0072B2", "verm": "#D55E00", "purple": "#CC79A7"}
 METHOD_COLORS = {"tikhonov_gcv": OI["sky"], "tikhonov_tuned": OI["blue"], "mfi": OI["green"],
                  "gp": OI["orange"], "potts": OI["verm"], "dense": OI["purple"],
-                 "sparse": OI["sky"], "chain": OI["black"]}
+                 "sparse": OI["sky"], "chain": OI["black"], "tree": OI["yellow"]}
 CMAP_FIELD, CMAP_STD, CMAP_ERR = "viridis", "magma", "cividis"
 plt.rcParams.update({"figure.dpi": 110, "savefig.dpi": 150, "font.size": 9, "axes.grid": False})
 
-EBM_VARIANTS = ["potts", "dense", "sparse", "chain"]
+EBM_VARIANTS = ["potts", "dense", "sparse", "chain", "tree"]
 
 # tiny settings for --quick smoke tests (deep-merged over the config)
 QUICK = {
@@ -210,6 +210,10 @@ def run_ebm(p, variant, cfg, key_seed=0, **kw):
     key = jax.random.PRNGKey(int(key_seed))
     sc = cfg["schedule"]
     t0 = time.perf_counter()
+    # overdispersed starts for every variant so split R-hat is honest (half the chains start random)
+    od = {"potts": {"frac_random": 0.5}, "dense": {"overdispersed": True}, "sparse": {"overdispersed": True},
+          "chain": {"init": "half"}, "tree": {"init": "half"}}.get(variant, {})
+    kw = {**od, **kw}
     try:
         if variant == "potts":
             from tomo.ebm_potts import sample_potts
@@ -220,6 +224,9 @@ def run_ebm(p, variant, cfg, key_seed=0, **kw):
         elif variant == "chain":
             from tomo.ebm_chain import sample_chain
             res = sample_chain(p, cfg, key, **kw)
+        elif variant == "tree":
+            from tomo.ebm_tree import sample_tree
+            res = sample_tree(p, cfg, key, **kw)
         else:
             raise ValueError(variant)
     except Exception as e:  # noqa: BLE001  (spec: report failures explicitly)
