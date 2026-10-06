@@ -1,0 +1,18 @@
+# TCV bolometer geometry (120 chords, vessel mask); load with tomo.tcv.make_tcv_problem(cfg, phantom, seed)
+# Source: Hamm et al. arXiv:2603.11856 (MIT), see tomo/data/tcv/NOTICE.md. Units: metres, (x,y)=(R,Z).
+seed: 0
+grid:
+  n: 20            # R pixels (box 0.624..1.1376 m); with ny=60 pixels are ~25.7 x 25 mm, 1170 active
+  ny: 60           # Z pixels (box -0.75..0.75 m)
+data_grid:
+  n: 80            # fine grid for data generation (4x4 sub-pixels per coarse pixel)
+  ny: 240
+noise:
+  rel: 0.03
+  floor: 0.01
+  calib_offset: 0.0
+model:
+  K: 8
+  lam: null
+experiments:
+  phantoms: [peaked, hollow, blob, edge, divertor]

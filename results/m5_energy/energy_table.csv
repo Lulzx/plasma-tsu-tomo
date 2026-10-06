@@ -1,0 +1,9 @@
+variant,task,n_spins,n_blocks,max_degree,n_chains,sweeps,sweeps_basis,tsu_energy_J,tsu_latency_s,gpu_energy_J,gpu_latency_s,gpu_memory_bound,laptop_time_s,laptop_power_W,laptop_energy_J,laptop_basis
+chain,posterior,74276.0,76.0,716.0,16,7000,full configured schedule (NOT converged in 100% of runs; value is a lower bound on cost to converge),1.08145856e-05,0.0532,119.95871104,59.72978816,True,213.2967209399143,20.0,4265.934418798286,assumed 20.0 W
+chain,MAP anneal,74276.0,76.0,716.0,16,600,configured anneal schedule,9.2696448e-07,0.00456,10.282175232,5.119696128,True,18.282576080564084,20.0,365.6515216112817,assumed 20.0 W
+dense,posterior,5642.0,315.0,2554.0,16,2390,"measured sweeps-to-converge (R-hat<1.05, median over runs) + warm-up",2.80475104e-07,0.07528499999999999,11.0420890944,5.5145720448,True,30.67674638639054,20.0,613.5349277278108,assumed 20.0 W
+dense,MAP anneal,5642.0,315.0,2554.0,16,600,configured anneal schedule,7.041216000000001e-08,0.0189,2.772072576,1.384411392,True,7.701275243445323,20.0,154.02550486890647,assumed 20.0 W
+potts,posterior,806.0,48.0,364.0,16,2300,"measured sweeps-to-converge (R-hat<1.05, median over runs) + warm-up",3.855904e-08,0.01104,0.218896704,0.108558528,True,12.543974659172052,20.0,250.87949318344104,assumed 20.0 W
+potts,MAP anneal,806.0,48.0,364.0,16,600,configured anneal schedule,1.005888e-08,0.0028799999999999997,0.057103487999999994,0.028319616,True,3.2723412154361875,20.0,65.44682430872375,assumed 20.0 W
+tree,posterior,72044.0,114.0,468.0,16,7000,full configured schedule (NOT converged in 100% of runs; value is a lower bound on cost to converge),1.04896064e-05,0.0798,76.33205887999999,37.9239616,True,269.13303789475896,20.0,5382.660757895179,assumed 20.0 W
+tree,MAP anneal,72044.0,114.0,468.0,16,600,configured anneal schedule,8.9910912e-07,0.00684,6.542747904,3.25062528,True,23.068546105265053,20.0,461.3709221053011,assumed 20.0 W

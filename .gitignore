@@ -12,3 +12,6 @@ results/**/*.npz
 results/**/*.npy
 *.log
 results/*_quick/
+
+# downloaded third-party data
+/data/

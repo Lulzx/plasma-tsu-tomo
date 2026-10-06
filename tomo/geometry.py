@@ -8,12 +8,25 @@ import numpy as np
 
 @dataclass
 class Grid:
-    """Square pixel grid over [xmin,xmax] x [ymin,ymax]; flat index = iy*n + ix."""
+    """Pixel grid over [xmin,xmax] x [ymin,ymax]; flat index = iy*n + ix.
+
+    ``n`` is the number of columns (x); ``ny`` (optional, default ``n``) the number of rows,
+    which allows tall domains such as the TCV vessel. Arrays are shaped (ny, n).
+    """
     n: int
     xmin: float = 0.0
     xmax: float = 1.0
     ymin: float = 0.0
     ymax: float = 1.0
+    ny: int = None
+
+    def __post_init__(self):
+        if self.ny is None:
+            self.ny = self.n
+
+    @property
+    def shape(self) -> tuple:
+        return (self.ny, self.n)
 
     @property
     def dx(self) -> float:
@@ -21,7 +34,7 @@ class Grid:
 
     @property
     def dy(self) -> float:
-        return (self.ymax - self.ymin) / self.n
+        return (self.ymax - self.ymin) / self.ny
 
     @property
     def xc(self) -> np.ndarray:
@@ -29,7 +42,7 @@ class Grid:
 
     @property
     def yc(self) -> np.ndarray:
-        return self.ymin + (np.arange(self.n) + 0.5) * self.dy
+        return self.ymin + (np.arange(self.ny) + 0.5) * self.dy
 
     @property
     def X(self) -> np.ndarray:
@@ -151,13 +164,13 @@ def siddon(p0, p1, grid: Grid):
         t = (grid.xmin + np.arange(grid.n + 1) * grid.dx - p0[0]) / d[0]
         parts.append(t[(t > tmin) & (t < tmax)])
     if d[1] != 0.0:
-        t = (grid.ymin + np.arange(grid.n + 1) * grid.dy - p0[1]) / d[1]
+        t = (grid.ymin + np.arange(grid.ny + 1) * grid.dy - p0[1]) / d[1]
         parts.append(t[(t > tmin) & (t < tmax)])
     ts = np.sort(np.concatenate(parts))
     dt = np.diff(ts)
     mid = p0[None, :] + (0.5 * (ts[:-1] + ts[1:]))[:, None] * d[None, :]
     ix = np.clip(np.floor((mid[:, 0] - grid.xmin) / grid.dx).astype(np.int64), 0, grid.n - 1)
-    iy = np.clip(np.floor((mid[:, 1] - grid.ymin) / grid.dy).astype(np.int64), 0, grid.n - 1)
+    iy = np.clip(np.floor((mid[:, 1] - grid.ymin) / grid.dy).astype(np.int64), 0, grid.ny - 1)
     flat = iy * grid.n + ix
     keep = dt > 0
     uniq, inv = np.unique(flat[keep], return_inverse=True)
@@ -165,9 +178,9 @@ def siddon(p0, p1, grid: Grid):
 
 
 def geometry_matrix(chords: Chords, grid: Grid, mask=None, dtype=np.float32) -> np.ndarray:
-    """T[i,j] = length of chord i in pixel j. Shape (M, N_active) if mask else (M, n*n)."""
+    """T[i,j] = length of chord i in pixel j. Shape (M, N_active) if mask else (M, n*ny)."""
     M = len(chords.p0)
-    full = np.zeros((M, grid.n * grid.n), dtype=np.float64)
+    full = np.zeros((M, grid.n * grid.ny), dtype=np.float64)
     for i in range(M):
         idx, ln = siddon(chords.p0[i], chords.p1[i], grid)
         full[i, idx] = ln

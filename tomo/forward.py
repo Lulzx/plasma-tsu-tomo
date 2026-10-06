@@ -59,13 +59,13 @@ def eps_max_from_estimate(est, factor: float = 1.2) -> float:
     return float(factor * np.max(np.clip(np.asarray(est, float), 0.0, None)))
 
 
-def block_average(img_fine: np.ndarray, n: int) -> np.ndarray:
-    """Area-average an (nf,nf) image into (n,n) blocks (nf must be a multiple of n)."""
-    nf = img_fine.shape[0]
-    if nf % n:
-        raise ValueError(f"fine n={nf} is not a multiple of coarse n={n}")
-    f = nf // n
-    return img_fine.reshape(n, f, n, f).mean(axis=(1, 3))
+def block_average(img_fine: np.ndarray, n: int, ny: int = None) -> np.ndarray:
+    """Area-average a fine image into (ny,n) blocks (default ny=n; sizes must divide)."""
+    ny = n if ny is None else ny
+    nfy, nf = img_fine.shape
+    if nf % n or nfy % ny:
+        raise ValueError(f"fine shape {img_fine.shape} is not a multiple of coarse shape {(ny, n)}")
+    return img_fine.reshape(ny, nfy // ny, n, nf // n).mean(axis=(1, 3))
 
 
 def make_problem(cfg, phantom, seed) -> Problem:

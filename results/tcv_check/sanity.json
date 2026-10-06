@@ -1,0 +1,24 @@
+{
+ "coverage": {
+  "n_chords": 120,
+  "n_active": 1148,
+  "frac_crossed": 0.9790940766550522,
+  "frac_ge3": 0.5818815331010453,
+  "median_chords_per_pixel": 3.0,
+  "min_chords": 0,
+  "max_chords": 24,
+  "mean_length_m": 0.06643838435411453
+ },
+ "peaked": {
+  "tikhonov_evidence": 0.30731467351607716,
+  "gp": 0.15513026740402297
+ },
+ "random": {
+  "tikhonov_evidence": 0.1862390426466826,
+  "gp": 0.11075339799983379
+ },
+ "divertor": {
+  "tikhonov_evidence": 0.41372703978069797,
+  "gp": 0.43411783705070534
+ }
+}

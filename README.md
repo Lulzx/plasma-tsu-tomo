@@ -2,7 +2,7 @@
 
 # plasma-tsu-tomo
 
-**Tokamak plasma tomography as Boltzmann sampling, built for a thermodynamic sampling unit**
+**Bayesian tokamak tomography as Boltzmann sampling: what works on probabilistic hardware, and what blocks it**
 
 [![tests](https://github.com/Lulzx/plasma-tsu-tomo/actions/workflows/tests.yml/badge.svg)](https://github.com/Lulzx/plasma-tsu-tomo/actions/workflows/tests.yml)
 ![python](https://img.shields.io/badge/python-3.11-blue)
@@ -14,123 +14,164 @@
 
 </div>
 
-Tokamak control needs radiation profiles in about a millisecond. Classical inversions are fast but give no uncertainty.
-Bayesian methods give uncertainty but are slow. This repository reconstructs 2D plasma emissivity from line-integrated
-bolometer data by **sampling an energy-based model with [thrml](https://github.com/extropic-ai/thrml)**. It also estimates
-what each reconstruction would cost in energy and latency on Extropic's p-bit hardware.
+Tokamak control needs radiation profiles in about a millisecond, ideally with uncertainty. Probabilistic (p-bit)
+hardware samples Boltzmann distributions natively at femtojoule cost per spin update. That makes Bayesian bolometer
+tomography an obvious application.
 
-The main contribution is **I-chain**, an Ising formulation in which each node couples to a bounded number of local
-neighbours. Real tomography has long-range couplings because chords cross the whole plasma, and I-chain removes them,
-which is what the hardware needs.
+This repository follows the whole path. It encodes the tomography posterior as a Potts/Ising energy, samples it with
+[thrml](https://github.com/extropic-ai/thrml), and builds sparse, hardware-faithful versions of the model. It then
+measures and explains what happens at each step, and estimates the energy and latency on Extropic's thermodynamic
+sampling unit (TSU).
 
-> Everything runs on a laptop CPU with synthetic data. No TSU hardware is required. Status: research prototype, in progress.
+> Everything runs on a laptop CPU, with synthetic data plus real TCV bolometer geometry. Status: research prototype,
+> write-up in progress. A full log of every result is in [`docs/FINDINGS.md`](docs/FINDINGS.md).
 
-## The problem in one picture
+## Key findings
+
+1. **A calibrated discrete posterior.** Choosing the smoothness hyperparameter by marginal likelihood calibrates the
+   posterior: on random fields, 95% intervals cover 0.95 of pixels, against 0.70 with the discrepancy principle.
+   The Potts sampler converges (R-hat = 1.00) in 30–50 s and keeps coverage at 0.89–0.98 on every test problem except
+   the unidentifiable hollow profile. On the peaked profile, Gaussian-process tomography covers only 0.54.
+2. **Honest accuracy.**
+   - The discrete posterior ties tuned Tikhonov on most problems.
+   - It clearly beats Tikhonov and GP on an off-axis blob (0.59 vs 0.78 and 0.80).
+   - An ablation shows its gain over the Gaussian posterior comes from **positivity**, not from discreteness.
+   - GP tomography is the most accurate on average; minimum Fisher information (MFI) wins on peaked and blob.
+3. **Bounded-degree exact embeddings (I-chain, I-tree).** These replace the dense line-integral couplings with local
+   running partial sums. The likelihood stays exact, as long as a variance-compensation rule is applied.
+4. **A mixing barrier, explained.** The embeddings never converge. Linear-Gaussian theory, validated against
+   simulation, gives slowest-mode autocorrelation times of 78 sweeps for dense Gibbs, against 11,350 (I-chain) and
+   6,900 (I-tree). We prove a structural lower bound: any exact, chord-local, bounded-degree embedding pins pixels
+   n_eff times harder than dense Gibbs. Copy-node embedding onto a degree-16 chip fails the same way. No remedy that
+   works with binary single-spin updates on a fixed sparse graph closes the gap.
+
+## The problem
 
 ```
 b = T ε + n,      n ~ N(0, σ²)          72 chord measurements  →  806 unknown pixels   (11× under-determined)
 ```
 
-The posterior with a smoothness prior is quadratic in ε. Discretise each pixel to K levels and encode the levels as
-domain-wall (thermometer) bits, and the posterior becomes **exactly an Ising model**:
+Discretise each pixel to K levels and encode the levels as domain-wall (thermometer) bits. The posterior is then
+**exactly an Ising model**:
 
 ```math
 E(x) = \tfrac{1}{2}\lVert (b - \Delta T x)/\sigma \rVert^2 + \tfrac{\lambda\Delta^2}{2}\sum_{\langle j,k\rangle}(x_j-x_k)^2
 \;\;\Longrightarrow\;\; E(s) = -\textstyle\sum_i h_i s_i - \sum_{i \lt j} J_{ij} s_i s_j
 ```
 
-The catch is that $T^\top T$ couples every pair of pixels that share a chord, so each spin ends up with **hundreds to
-thousands of neighbours**. TSU hardware wants sparse, local couplings.
+The catch is that $T^\top T$ couples every pair of pixels that share a chord. Spins end up with hundreds to thousands
+of neighbours, while hardware wants sparse, local couplings.
 
-## Formulations, from reference to hardware-faithful
+## Formulations
 
-| Variant | Idea | Spins | Max degree | Gibbs blocks |
+| Variant | Idea | Spins | Max degree | Gibbs colours |
 |---|---|---:|---:|---:|
-| **P** Potts | `CategoricalNode` per pixel, pairwise factors carry Q | 806 (K=8 states) | ~74 pixels | 48 |
-| **I-dense** | Domain-wall Ising, all couplings kept | 5,642 | 2,554 | 315 |
-| **I-sparse** | Drop weak or long-range pixel couplings | 5,642 | lower | ~140–196 |
-| **I-chain** ⭐ (K_z=16) | Running partial sums along each chord | 38,852 | 364 | **44** |
-| **I-chain** ⭐ (K_z=32, default) | Same, finer z grid so variance compensation applies | 74,276 | 716 | 76 |
-| **I-tree** (K_z=32) | Balanced binary tree of partial sums per chord (depth ⌈log₂ n⌉) | 72,044 | 468 | 114 |
+| **Potts** | categorical pixel variables, pairwise factors carry Q | 806 | 364 (pixels) | 48 |
+| **I-dense** | domain-wall Ising, all couplings kept | 5,642 | 2,554 | 315 |
+| **I-sparse** | drop weak or long-range pixel couplings (approximate) | 5,642 | 951 | 140–196 |
+| **I-chain** (K_z=16) | running partial sums along each chord | 38,852 | 364 | 44 |
+| **I-chain** (K_z=32, default) | finer z grid, so compensation applies | 74,276 | 716 | 76 |
+| **I-tree** (K_z=32) | binary tree of partial sums per chord | 72,044 | 468 | 114 |
 
-**I-chain** swaps each chord's long-range sum for a chain of auxiliary partial sums $z_{i,k}$ that runs physically
-along the chord:
+A 2-colour checkerboard is *not* a valid Gibbs blocking once $T^\top T$ is in the energy, so every colour count above
+comes from a proper colouring of the real coupling graph.
+
+### I-chain and I-tree
 
 ```math
-E_\text{chain} = \sum_i \Big[\sum_k \frac{(z_{i,k}-z_{i,k-1}-T_{ij_k}\Delta x_{j_k})^2}{2\tau^2} + \frac{(b_i - z_{i,n})^2}{2\sigma_i^2}\Big]
+E_\text{chain} = \sum_i \Big[\sum_k \frac{(z_{i,k}-z_{i,k-1}-T_{ij_k}\Delta x_{j_k})^2}{2\tau^2} + \frac{(b_i - z_{i,n})^2}{2 s_i^2}\Big]
 ```
 
-After this change every term touches only adjacent chain elements and one pixel. No pixel-to-pixel $T^\top T$ edges
-remain. A structured colouring (pixel checkerboard × bit index, plus chain parity × bit index) needs 2(K−1) + 2(K_z−1)
-blocks: 44 at K_z = 16, which is within 7 of the clique lower bound.
+Every term touches one pixel and two adjacent chain elements, so no pixel–pixel edges remain. I-tree replaces the chain
+with a balanced binary tree, so a pixel change reaches the data term in ⌈log₂ n⌉ hops.
 
-The chain has two known weak points:
-- **Effective noise.** Integrating out a continuous chain shows that τ inflates the chord noise to $\sigma^2 + n\tau^2$.
-- **Stiffness.** With discrete $z$ the chain freezes when $\tau \ll \Delta z$.
+- **Effective noise.** Integrating out a continuous chain inflates the chord variance to $s^2 + \sum_k\tau_k^2$.
+- **Variance compensation.** Setting $s^2=\sigma^2-\sum_k\tau_k^2$ makes the likelihood exact. Exact dynamic
+  programming on a toy chord confirms it to 2e-4 nats at τ/Δz = 0.75.
+- **Rigidity.** With discrete z, the chain freezes when τ ≪ Δz. The usable window is Δz/2 ≲ τ ≲ σ/√n.
+- **Calibration hurts.** The softer, calibrated prior widens the windows for z, so Δz grows. Compensation then clamps,
+  inflating chord variance about 6.5× (chain) and 3× (tree).
 
-The usable range is therefore Δz/2 ≲ τ ≲ σ/√n. Two fixes widen it:
-- **Local z windows** centred on the warm-start partial sums shrink Δz.
-- **Variance compensation** shrinks the endpoint variance to $\sigma^2 - \sum_k \tau_k^2$, which makes the
-  continuous-z likelihood exact for any admissible τ. On a toy chord, exact dynamic programming confirms a matched
-  variance to 1e-4 at τ/Δz = 0.75. The condition $\sum_k\tau_k^2 < \sigma^2$ only holds once K_z ≥ 32, which is why that
-  is the default.
+Derivations are in the docstrings of [`tomo/ebm_chain.py`](tomo/ebm_chain.py) and [`tomo/ebm_tree.py`](tomo/ebm_tree.py).
 
-The derivations are in the docstring of [`tomo/ebm_chain.py`](tomo/ebm_chain.py).
+## The mixing barrier
 
-**The trade-off with a calibrated prior.** The z windows scale with the posterior spread of each partial sum. With the
-calibrated (evidence) λ described below, that spread is wider, Δz grows, and compensation is clamped on every chord. On
-the peaked phantom the chord variance is inflated by about 6.5× for the chain and 3× for the tree, against 1.5× and 1.05×
-with the stiffer discrepancy λ. Accurate likelihoods under a calibrated prior therefore need a finer z grid (K_z ≥ 64).
+<img src="docs/figures/mixing_predicted_vs_measured.png" width="80%" alt="Linear theory against exact simulation and against the discrete Ising samplers">
 
-**I-tree** ([`tomo/ebm_tree.py`](tomo/ebm_tree.py)) replaces each chain with a balanced binary tree of partial sums. The
-aim was to cut how far a pixel change has to travel to reach the data term, from n hops to log₂ n hops.
-- **What improved:** burn-in is 2–3× faster, the max degree is lower, and accuracy and coverage are slightly better on all 4 test cases.
-- **What did not:** it does **not** converge, and the hoped-for n² → (log n)² mixing gain does not appear.
-- **The real bottleneck:** plain dense Gibbs on the same posterior mixes in about 2 sweeps, while chain and tree need
-  hundreds. The cost is the auxiliary-variable construction itself, the classic data-augmentation slowdown, and not chain
-  length.
+For a Gaussian target, block Gibbs is a linear iteration with an exactly computable convergence rate (Amit 1991;
+Roberts & Sahu 1997). The partial-sum auxiliaries form a *data augmentation*. Their slowdown is the inverse of one
+minus the fraction of missing information (Liu, Wong & Kong 1994).
 
-## Synthetic data
+**Proposition.** Suppose an embedding has chord-private auxiliaries, an exact marginal likelihood, and no pixel–pixel
+edges. Then each chord's contribution to the conditional pixel precision satisfies
 
-The data are generated on a 128×128 grid with its own geometry matrix and reconstructed on 32×32, so the method is never
-tested on data produced by its own discretisation (the "inverse crime"). Noise is 3% of the signal plus a floor of 1% of
-the maximum.
+```math
+\operatorname{tr}\Lambda_i \ \ge\ \lVert t_i\rVert_1^2/\sigma_i^2 \;=\; n_{\text{eff},i}\times(\text{the dense-Gibbs value}).
+```
 
-<img src="docs/figures/phantoms.png" width="100%" alt="Phantom library: peaked, hollow, off-axis blob, edge band, random field; fine and coarse truth">
+So conditioning on the auxiliaries pins pixels about n_eff times harder than the data do jointly. The measured
+consequences:
 
-| Geometry check | Value |
-|---|---|
-| Active pixels / chords | 806 / 72 (3 fans × 24) |
-| Pixels per chord (mean / max) | 30.8 / 45 |
-| Pixels never crossed by a chord | 0.7% |
-| Siddon ray tracing vs analytic disk (summed length) | −0.017% error |
+| Quantity (default problem) | Dense | I-chain | I-tree |
+|---|---:|---:|---:|
+| Predicted slowest-mode autocorrelation (sweeps) | 78 | 11,350 | 6,900 |
+| Relaxation time 1/(1−ρ) (sweeps) | 35 | 5,676 | 3,440 |
 
-## Results so far
+Further results:
+- The theory matches an exact simulation of the linear Gibbs chain to within 5–20%.
+- It predicts the ratio of embedded to dense autocorrelation for the discrete samplers within about 2×.
+- The calibrated prior mixes about 8× slower than the stiff one (the slowdown scales as 1/λ).
+- Compensation does not change the rate.
 
-### Classical baselines (M2)
+**Remedies analysed:**
+- **Larger τ** saturates while the likelihood stays exact. Beyond that it is just a biased, tempered likelihood.
+- **Grouping pixels** per auxiliary helps only by raising the degree.
+- **Over-relaxation** is the best target-preserving option (about 20× faster for the chain), but it is still 25–45×
+  slower than dense and needs non-binary updates.
 
-The baselines ran on the four phantoms and on 200 Gaussian random fields, with identical noise draws for every method.
-The figures and table below use the earlier, discrepancy-principle "tuned" λ. They will be regenerated with the evidence λ.
+Full derivation: [`docs/mixing_theory.md`](docs/mixing_theory.md).
 
-<img src="docs/figures/reconstructions.png" width="100%" alt="Truth and baseline reconstructions (Tikhonov GCV, tuned Tikhonov, MFI, GP mean and std) for five phantoms">
+## Results
 
-<p align="center"><img src="docs/figures/random_fields_boxplot.png" width="75%" alt="Relative L2 error and SSIM over 200 random fields per baseline"></p>
+### Main comparison (M3)
 
-| Baseline, 200 random fields | Mean rel. L2 | GP coverage (68% / 95%) |
-|---|---:|---:|
-| Tikhonov, GCV λ | 0.336 | – |
-| Tikhonov, tuned (discrepancy principle) | 0.353 | – |
-| Minimum Fisher information | 0.296 | – |
-| Gaussian-process tomography | **0.291** | 0.63 / 0.89 |
+The run covers 4 phantoms plus 8 random fields, one noise seed each. Evidence λ throughout; 16 chains with half
+started at random; 2,000 warm-up sweeps, then 500 samples taken every 10 sweeps.
 
-With only 72 chords, every method struggles on the hollow and edge profiles. The figure shows this honestly, and it is
-the regime where a better prior should pay off.
+| Relative L2 error | Peaked | Hollow | Blob | Edge | Random (8) |
+|---|---:|---:|---:|---:|---:|
+| Tikhonov (tuned) | 0.263 | 0.649 | 0.776 | 0.611 | 0.303 |
+| MFI | **0.200** | 0.807 | **0.410** | 0.620 | 0.285 |
+| GP tomography | 0.226 | **0.540** | 0.798 | 0.653 | **0.263** |
+| **Potts** | 0.257 | 0.558 | 0.593 | 0.613 | 0.308 |
+| I-dense | 0.258 | 0.561 | 0.593 | 0.613 | 0.307 |
+| I-chain | 0.313 | 0.557 | 0.689 | 0.613 | 0.321 |
+| I-tree | 0.283 | 0.549 | 0.636 | 0.617 | 0.311 |
+
+| 95% coverage (target 0.90–0.98) | Peaked | Hollow | Blob | Edge | Random (8) |
+|---|---:|---:|---:|---:|---:|
+| **Potts** | 0.98 | 0.83 | 0.91 | 0.89 | 0.945 |
+| GP tomography | 0.54 | 0.71 | 0.87 | 0.89 | 0.93 |
+
+**Convergence and time:**
+- Potts and I-dense: max R-hat 1.00 on every problem; 30–49 s (Potts) and 57–110 s (I-dense) on a shared machine.
+- I-chain and I-tree: max R-hat between 2.5 and ∞, so they never converge.
+
+<img src="docs/figures/m3_reconstructions.png" width="100%" alt="Truth, Tikhonov, GP mean/std, and posterior mean/std/MAP of each EBM on four phantoms">
+
+### Ablations (M4, peaked phantom)
+
+- **Levels:** K = 8 is best for Potts (0.258); K = 4 is worse (0.322); K = 16 gives 0.278.
+- **Sparsification:** I-sparse at threshold 0.2 converges in 9 s with 49 colours, with the same error (0.261) and
+  coverage of 0.95. It is the most practical variant found, but it is approximate and not bounded-degree.
+- **I-chain τ/Δz = 2:** the chain converges (R-hat 1.09) but is biased (0.434), the tempered-likelihood regime the
+  theory predicts.
+- **Noise:** Potts beats Tikhonov at 1% noise (0.239 vs 0.265) and loses at 10% (0.325 vs 0.265). Its coverage stays
+  0.98.
 
 ### Choosing λ for calibrated uncertainty
 
-Low coverage was a *model* problem, not a sampler problem. Even the exact Gaussian posterior under-covered with the
-discrepancy-principle λ, which is 6–10× too stiff. "Tuned" λ is now chosen by maximising the Gaussian marginal likelihood
-(`baselines.evidence_lambda`, empirical Bayes, data only). The table below is for the exact Gaussian posterior with each λ:
+The table shows the exact Gaussian posterior under each choice of λ.
 
 | Problems | rel. L2 (discrepancy → evidence) | 95% coverage (discrepancy → evidence) |
 |---|---:|---:|
@@ -140,111 +181,106 @@ discrepancy-principle λ, which is 6–10× too stiff. "Tuned" λ is now chosen 
 | peaked (3 seeds) | 0.310 → 0.283 | 0.69 → 1.00 |
 | hollow (3 seeds) | 0.653 → 0.654 | 0.37 → 0.76 |
 
-The hollow profile is not identifiable from 72 chords at any λ, so it stays under-covered.
+### Where the gain comes from (ablation, preliminary)
 
-### Energy-based models (M3, preliminary)
+Each row uses the same evidence λ and the same upper bound ε_max:
 
-These are single-seed runs on a shared, heavily loaded machine, using the earlier discrepancy λ. A full M3 run with the
-evidence λ, overdispersed starts for every variant, and I-tree is in progress. It writes `report/results_table.md`.
+| | Peaked | Hollow | Random |
+|---|---:|---:|---:|
+| Gaussian (exact) | 0.263 | 0.649 | **0.276** |
+| truncated ≥ 0 | 0.263 | 0.543 | 0.283 |
+| truncated [0, ε_max] | 0.296 | **0.536** | 0.305 |
+| Potts K = 4 / 8 / 16 / 32 | .322 / .255 / .280 / .289 | .608 / .554 / .543 / .541 | .310 / .289 / .299 / .302 |
 
-| Method | Peaked | Hollow | Uncertainty |
-|---|---:|---:|:-:|
-| Tikhonov, tuned | 0.289 | 0.65 | – |
-| Minimum Fisher information | 0.200 | 0.81 | – |
-| Gaussian-process tomography | 0.226 | 0.54 | ✓ |
-| **Potts** posterior mean | 0.277 | 0.63 | ✓ |
-| I-dense posterior mean | 0.278 | 0.63 | ✓ |
-| **I-chain** (K_z=32, compensated) | 0.315 | 0.61 | ✓ |
-| **I-chain** (K_z=32, compensated, 2 pixels per link) | 0.290 | – | ✓ |
+- **Hollow:** positivity explains the whole gain.
+- **Peaked:** the K = 8 edge fades as K grows, so it is level alignment, not a benefit of discreteness.
 
-**Targets from the spec, and where they stand:**
+### Classical baselines (M2, 200 random fields)
 
-- ✅ **Accuracy within 1.2× of tuned Tikhonov:** met by Potts, I-dense and I-chain on the phantoms shown. GP and MFI are still more accurate.
-- ✅ **Bounded-degree Ising model, documented:** I-chain and I-tree. Their degree is bounded by camera geometry, not grid size, but it is still far above real chips (see below).
-- ⚠️ **Under 60 s per 32×32 reconstruction:** Potts meets it at about 52 s. The batched JAX sampler projects about 62 s for the I-chain full schedule, but only at K_z=16 and under load. The dense Ising variant is limited by its 315 sequential blocks.
-- ⚠️ **95% intervals covering 90–98% of pixels:** met by the exact Gaussian posterior with the evidence λ (0.95 on random fields). Measurement for the EBMs is pending in the full M3 run.
-- ❌ **Convergence (split R-hat below 1.05):** not met for I-chain, I-tree or dense Ising. The cause is the auxiliary-variable construction (see I-tree above).
+<img src="docs/figures/reconstructions.png" width="100%" alt="Truth and baseline reconstructions for five phantoms">
+
+GP (0.291) and MFI (0.296) beat Tikhonov (0.336 with GCV) on mean relative L2 error. GP's 95% coverage is 0.89.
+These numbers predate the switch to the evidence λ and will be regenerated.
+
+### Real TCV geometry
+
+<img src="docs/figures/tcv_check.png" width="60%" alt="TCV vessel with 120 bolometer lines of sight; truth, Tikhonov and GP reconstructions">
+
+The setup uses 120 lines of sight and the vessel contour from the TCV tokamak, with SOLPS phantom components vendored
+from [Hamm et al.](https://github.com/dhamm97/real-time-tomo-prad) (MIT license). The grid is 20×60 with 1,148 active
+pixels.
+
+| Phantom | Tikhonov (evidence λ) | GP |
+|---|---:|---:|
+| peaked | 0.31 | 0.16 |
+| random | 0.19 | 0.11 |
+| divertor | 0.41 | 0.43 |
+
+The EBM variants have not yet been run on this geometry.
 
 ## Fitting real hardware
 
-Extropic's Z1 is a degree-16, 2-colourable graph with 269,568 p-bits. [`tomo/embed.py`](tomo/embed.py) compiles any of our
-models to degree ≤ 16 by splitting high-degree spins into ferromagnetically coupled copy trees (Sajeeb et al. 2025). The
-compiler is exact on small cases checked by enumeration.
+Extropic's Z1 is a degree-16, 2-colourable graph of 269,568 p-bits. [`tomo/embed.py`](tomo/embed.py) compiles any model
+to degree ≤ 16 by splitting high-degree spins into ferromagnetically bound copy trees. The compiler is exact on small
+cases checked by enumeration.
 
-| Model (thermometer encoding) | Logical spins | Max degree | Spins at degree ≤ 16 | Overhead |
-|---|---:|---:|---:|---:|
-| I-chain, K_z=16 | 38,852 | 364 | 178,182 | 4.6× |
-| I-chain, K_z=32 | 74,276 | 716 | 620,967 | 8.4× |
-| I-tree (earlier build) | 37,772 | 244 | 190,889 | 5.1× |
-| I-sparse | 5,642 | 951 | 51,583 | 9.1× |
-| I-dense | 5,642 | 2,554 | 214,207 | 38× |
+| Model | Logical spins | Spins at degree ≤ 16 | Overhead |
+|---|---:|---:|---:|
+| I-chain, K_z=16 | 38,852 | 178,182 | 4.6× |
+| I-chain, K_z=32 | 74,276 | 620,967 | 8.4× |
+| I-sparse | 5,642 | 51,583 | 9.1× |
+| I-dense | 5,642 | 214,207 | 38× |
 
-The I-tree row comes from a build made while I-tree was still in development, so its spin count does not match the formulations table.
+**Copy-node embedding does not sample well.**
+- **Strong copy coupling:** at the strength that guarantees exactness, every chain freezes.
+- **Weaker coupling:** 14–32% of copy bonds break and posterior means are off by 1–3 standard deviations.
 
-**Copy-node embedding does not sample well.** On a small test problem:
-- **Strong copy couplings:** when they are strong enough to guarantee exactness (about 100× a typical coupling), every chain freezes.
-- **Weaker couplings:** 14–32% of copy bonds break, posterior means are off by 1–3 standard deviations, and mixing is about 10× slower.
+This is the same augmentation barrier, with copies in place of partial sums.
 
-**Binary encoding** of levels is the more promising route. It cuts the I-chain to about 24k spins at degree ≤ 16
-(2.1× overhead). The cost is a coupling dynamic range that is 4–8 bits wider, on top of the existing 12–13 bits, and it
-has not yet been tested in sampling. Coupling precision, not only degree, is a hardware constraint here.
+**Binary encoding** of the levels cuts I-chain to about 24k spins at degree 16. It costs 4–8 more bits of coupling
+dynamic range, and it has not yet been sampled.
 
-## TSU energy and latency model
+### Energy and latency
 
 ```math
-E_\text{frame} = N_\text{spins}\,N_\text{sweeps}\,N_\text{chains}\,E_\text{cell},
-\qquad t_\text{frame} \approx N_\text{sweeps}\,N_\text{blocks}\,t_\text{update}
+E_\text{frame} = N_\text{spins}\,N_\text{sweeps}\,N_\text{chains}\,E_\text{cell} + E_\text{readout},
+\qquad t_\text{frame} \approx N_\text{sweeps}\times(\text{colours}\times t_\text{update}\ \text{or sweep time})
 ```
 
-The spec's worked I-chain estimate uses E_cell ≈ 1.3 fJ and t_update ≈ 100 ns. It gives about **2 µJ** and **11 ms** per
-posterior frame. Energy looks excellent, but latency misses the 1 ms control target unless the sweep count or block count
-drops.
+`tomo/energy.py` has presets for the original spec (1.3 fJ, 100 ns), Jelinčič et al. 2025 (about 2 fJ), and Z1
+(arXiv:2608.01615: 7.09 fJ per p-bit per Gibbs cycle, 20 ns sweeps on a 2-colour graph, readout 1.69 pJ per node and
+25 µs per frame).
 
-> **Published hardware numbers differ.** The literature search ([`docs/related_work.md`](docs/related_work.md)) found
-> these figures in Extropic's papers:
-> - **Energy per cell:** about 2 fJ per cell in arXiv:2510.23972 v2, and a SPICE-based 7.09 fJ per p-bit per Gibbs cycle in arXiv:2608.01615.
-> - **Readout:** 1.69 pJ per node and 25 µs per frame.
-> - **Z1 chip:** a degree-16 graph.
->
-> `tomo/energy.py` now has presets for all three sources (`spec`, `extropic_2510`, `z1_2608`), plus readout and
-> embedded-spin options.
->
-> | I-chain K_z=16, 16 chains, 2,500 sweeps (placeholder) | Energy / frame | Latency / frame |
-> |---|---:|---:|
-> | spec preset, logical model | 2.0 µJ | 11 ms |
-> | Z1 preset, logical model, with readout | 12 µJ | 1.1 ms |
-> | Z1 preset, embedded at degree 16, with readout | 55 µJ | 0.45 ms |
->
-> The Z1 rows are optimistic. They charge 10 ns per colour block because our graphs are not 2-colourable, and they
-> ignore the mixing slowdown from embedding. Energy stays in the µJ range. Latency hinges on sweeps to convergence,
-> which is not yet achieved.
+| I-chain K_z=16, 16 chains, 2,500 sweeps (placeholder) | Energy / frame | Latency / frame |
+|---|---:|---:|
+| spec preset, logical | 2.0 µJ | 11 ms |
+| Z1 preset, logical, with readout | 12 µJ | 1.1 ms |
+| Z1 preset, embedded at degree 16, with readout | 55 µJ | 0.45 ms |
 
-`make m5` recomputes both numbers from the *measured* spin counts, block counts and sweeps to convergence. It also
-reports a sensitivity range of E_cell 0.5–3× and t_update 50–500 ns.
-
-**Fair comparison.** A precomputed Tikhonov inversion is one matrix-vector product, and no sampler beats that on a point
-estimate. Real-time Gaussian uncertainty is already achieved on TCV this way (Hamm et al., arXiv:2603.11856). The TSU's
-real case is non-Gaussian posteriors (positivity, discrete levels, sparsity) and full 2D maps with calibrated
-uncertainty, where conventional methods need MCMC.
+With the *measured* sweeps to convergence (M5, spec preset), the converged models cost 39 nJ and 11 ms per frame
+(Potts, on a hypothetical categorical cell) and 0.28 µJ and 75 ms (I-dense). For I-chain, at least 10.8 µJ and 53 ms
+is a lower bound, because it never converges. Energy stays tiny throughout. Latency is set by sweeps to convergence, which the embedded models never
+reach, so their latencies are lower bounds. A precomputed Tikhonov inversion is a single matrix–vector product. Real-time
+Gaussian uncertainty is already achieved on TCV that way (Hamm et al., arXiv:2603.11856). A sampler earns its place only
+for non-Gaussian structure and full calibrated 2D maps.
 
 ## Related work and novelty
 
-A literature search (October 2026, about 60 references, listed in [`docs/related_work.md`](docs/related_work.md)) found
-the following.
+A literature search in October 2026 covered about 60 references; see [`docs/related_work.md`](docs/related_work.md).
 
 **Not found in prior work:**
-- Running partial-sum chains applied to a *weighted Gaussian data term*.
-- The noise and stiffness analysis: σ² + nτ², variance compensation, and the τ window.
-- Posterior *sampling* of tomography on p-bit hardware.
-- Any Ising or sampling hardware used for fusion tomography.
+- running partial-sum auxiliaries for a *weighted Gaussian data term*;
+- the noise, compensation and mixing analysis of that construction;
+- posterior *sampling* of tomography on p-bit hardware;
+- Ising or sampling hardware for fusion tomography.
 
 **Known:**
-- The general mechanism of auxiliary chains that carry partial sums: SAT sequential counters, p-bit adder chains, and
-  sparse-QUBO constraint decomposition.
-- Bounded-degree p-bit graphs built from copy nodes (Sajeeb et al. 2025).
+- auxiliary chains that carry counts or sums: SAT sequential counters, p-bit adder chains, sparse-QUBO constraint
+  decomposition;
+- copy-node degree reduction (Sajeeb et al. 2025);
+- the theory of data-augmentation convergence.
 
-**Closest comparator:** Extropic's own Gaussian-field reconstruction on Z1 (arXiv:2608.01615), which uses minor
-embedding.
+**Closest comparator:** Extropic's own Gaussian-field reconstruction on Z1 (arXiv:2608.01615).
 
 ## Quickstart
 
@@ -253,68 +289,96 @@ git clone https://github.com/Lulzx/plasma-tsu-tomo && cd plasma-tsu-tomo
 uv venv --python 3.11 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 
-pytest -q          # full test suite
-make quick         # smoke-run every experiment in a few minutes
-make all           # reproduce every figure and table
+pytest -q          # 217 tests, about 1 minute
+make quick         # smoke-run every milestone script in a few minutes
+make all           # reproduce M1–M6 (several hours on a laptop)
 ```
 
-| Milestone | Command | What it produces |
+| What | Command | Outputs |
 |---|---|---|
-| M1 Geometry and phantoms | `make m1` | chord fans, phantom library, Siddon validation |
-| M2 Classical baselines | `make m2` | Tikhonov / MFI / GP on 4 phantoms + 200 random fields |
-| M3 EBM reconstructions | `make m3` | Potts, I-dense, I-chain, I-tree vs baselines, plus diagnostics |
-| M4 Ablations | `make m4` | K levels, τ, sparsification threshold, noise level |
-| M5 TSU estimate | `make m5` | energy and latency per frame, sensitivity analysis |
-| M6 Summary | `make m6` | `report/results_table.md`, figures |
-| Embedding | `python experiments/embed_report.py`, `embed_sampling.py` | degree-16 embedding tables, embedded sampling check |
+| M1 geometry and phantoms | `make m1` | `results/m1_geometry/` |
+| M2 classical baselines | `make m2` | `results/m2_baselines/` |
+| M3 EBMs vs baselines | `make m3` | `results/m3_ebm/results_table.md`, figures |
+| M4 ablations (K, τ, sparsity, noise) | `make m4` | `results/m4_ablations/` |
+| M5 TSU energy and latency | `make m5` | `results/m5_energy/` |
+| M6 summary | `make m6` | `report/results_table.md` |
+| Positivity / discreteness ablation | `python experiments/route2_ablation.py --n-random 3` | `results/route2_ablation/` |
+| Mixing theory | `python experiments/mixing_theory.py` | `results/mixing_theory/`, `docs/figures/mixing_*.png` |
+| Degree-16 embedding | `python experiments/embed_report.py`, `python experiments/embed_sampling.py` | tables, sampling check |
+| TCV geometry check | `python -m tomo.tcv --fetch && python experiments/tcv_check.py` | `results/tcv_check/` |
 
-Every script takes `--config` (merged over [`configs/default.yaml`](configs/default.yaml)), `--out`, and `--quick`. The
-merged config is saved next to each run's outputs, and all seeds come from the config.
+Every script takes `--config` (merged over [`configs/default.yaml`](configs/default.yaml); TCV uses
+[`configs/tcv.yaml`](configs/tcv.yaml)), `--out` and `--quick`. The merged config is saved next to each run's outputs,
+and each log records the machine load.
 
 ## Repository layout
 
 ```
-configs/default.yaml   grid, plasma shape, cameras, noise, model, schedules, experiments
+configs/               default.yaml (synthetic geometry), tcv.yaml (TCV geometry)
 tomo/
-  geometry.py          grid, D-shaped mask, chord fans, Siddon ray tracing → T
+  geometry.py          grid (square or rectangular), D-shaped mask, chord fans, Siddon ray tracing → T
   phantoms.py          peaked / hollow / blob / edge / Gaussian random fields
   forward.py           fine-grid data generation, noise model
-  baselines.py         Tikhonov (GCV, discrepancy, evidence), minimum Fisher information, GP tomography
-  ebm_common.py        quadratic form, domain-wall encoding, bit QUBO
-  ebm_potts.py         Variant P (thrml CategoricalNode)
-  ebm_ising.py         I-dense and I-sparse
-  ebm_chain.py         I-chain (main contribution)
-  ebm_tree.py          I-tree (binary tree of partial sums)
+  tcv.py               TCV bolometer geometry, vessel, phantoms (vendored data in tomo/data/tcv/)
+  baselines.py         Tikhonov (GCV, discrepancy, L-curve, evidence), MFI, GP tomography
+  positive.py          truncated-Gaussian posterior (exact Gibbs), log-Laplace positivity baseline
+  ebm_common.py        quadratic form, domain-wall encoding, bit QUBO, result assembly
+  ebm_potts.py         Potts variant (thrml CategoricalNode; JAX backend)
+  ebm_ising.py         I-dense, I-sparse, variant dispatcher
+  ebm_chain.py         I-chain (partial-sum chains, compensation, local z windows)
+  ebm_tree.py          I-tree (binary trees of partial sums)
+  sampling.py          thrml-backed block Gibbs, batched JAX backend, annealing, parallel tempering
+  mixing_theory.py     linear-Gaussian Gibbs rates, autocorrelation, data-augmentation analysis
   embed.py             degree-bounded copy-node embedding, binary encoding, coupling precision
-  sampling.py          thrml-backed block Gibbs, annealing, parallel tempering, fast JAX backend
   metrics.py           relative L2, SSIM, peak error, χ², coverage, split R-hat
-  energy.py            TSU energy and latency model, CPU/GPU comparisons
-experiments/           m1–m6, one script per milestone
-tests/                 pytest suite (exact-enumeration checks of every sampler)
-docs/                  spec, module interfaces, figures
+  energy.py            TSU energy and latency model with hardware presets
+experiments/           m1–m6 milestone scripts, ablations, mixing theory, embedding, TCV
+tests/                 217 tests, including exact-enumeration checks of every sampler
+docs/                  FINDINGS.md, mixing_theory.md, related_work.md, paper_plan.md, INTERFACES.md, spec.md
 ```
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [`docs/FINDINGS.md`](docs/FINDINGS.md) | Every result, positive and negative, with its source script |
+| [`docs/mixing_theory.md`](docs/mixing_theory.md) | Derivation of the mixing barrier, the proposition, validation, remedies |
+| [`docs/related_work.md`](docs/related_work.md) | Verified literature search and novelty assessment |
+| [`docs/paper_plan.md`](docs/paper_plan.md) | Claims, the evidence for each, status, venues |
+| [`docs/INTERFACES.md`](docs/INTERFACES.md) | Public API of every module |
+| [`docs/spec.md`](docs/spec.md) | The original technical specification |
 
 ## How correctness is checked
 
-- **Exact enumeration.** Every sampler (thrml and the JAX backend) is checked against exact marginals on small models.
-- **Energy identities.** The QUBO → Ising conversion, the domain-wall encoding and the chain energy are each checked against the spec formula, evaluated directly.
-- **Geometry.** Siddon chord lengths are checked against analytic line integrals.
-- **No truth leakage.** Hyperparameters (λ, ε_max, A, τ) come only from the data and the Tikhonov solution.
+- **Exact enumeration.** Every sampler (thrml, batched JAX, truncated Gaussian, embedded) is checked against exact
+  marginals on small models.
+- **Energy identities.** The QUBO → Ising conversion, domain-wall encoding, chain and tree energies are checked against
+  the spec formula, written out directly.
+- **Theory against simulation.** The mixing theory is tested against simulated autocorrelation of the linear Gibbs chain.
+- **Geometry.** Siddon chord lengths are checked against analytic line integrals. The TCV line-length matrix is checked
+  against the authors' etendue matrix.
+- **No truth leakage.** All hyperparameters (λ, ε_max, A, τ, z windows) come from the data and the Tikhonov solution only.
 
 ## Where this departs from the spec
 
-- **Gibbs blocks.** A 2-colour pixel checkerboard is not a valid blocking once $T^\top T$ is present. Potts needs 48 blocks and dense Ising 315. Only I-chain achieves the spec's 44.
-- **Choice of λ.** "Tuned Tikhonov", and the λ the EBMs sample with, maximise the Gaussian marginal likelihood (evidence). This is the choice that gives calibrated uncertainty. The discrepancy principle (χ²/M = 1) and GCV remain available.
-- **I-chain limit.** τ → 0 does *not* recover the exact posterior when z is discrete; the chain becomes rigid instead. See the `ebm_chain.py` docstring for the usable τ window.
-- **Timings.** The wall-clock times above were measured on a shared, loaded machine. Every experiment log records the load average.
+- **Gibbs blocks.** The spec's 2-colour blocking is invalid for Potts and I-dense, which need 48 and 315 colours. Only
+  I-chain matches the spec's 44.
+- **λ.** It is chosen by marginal likelihood, not GCV: GCV interpolates the data when M ≪ N, and only the evidence λ
+  gives calibrated uncertainty.
+- **The τ → 0 limit.** Shrinking τ does *not* recover the exact posterior when z is discrete; the chain freezes
+  instead. Variance compensation is used to remove the noise inflation.
+- **The "main contribution".** The spec framed I-chain as the solution. It is exact and bounded-degree, but the mixing
+  barrier makes it impractical, and we document why.
+- **Hardware numbers.** The spec's 1.3 fJ figure is kept as one preset alongside Extropic's published figures.
 
 ## References
 
-- [thrml](https://github.com/extropic-ai/thrml): block Gibbs sampling of probabilistic graphical models in JAX.
-- [codon_opt](https://github.com/extropic-ai/codon_opt): the Potts and domain-wall Ising template, and the E_cell and RNG timing figures.
-- [An efficient probabilistic hardware architecture for diffusion-like models](https://arxiv.org/abs/2510.23972): Extropic's hardware energy model.
-- The full technical specification is in [`docs/spec.md`](docs/spec.md).
+- [thrml](https://github.com/extropic-ai/thrml): block Gibbs sampling in JAX.
+- Extropic: [arXiv:2510.23972](https://arxiv.org/abs/2510.23972) (hardware architecture) and [arXiv:2608.01615](https://arxiv.org/abs/2608.01615) (Z1, Gaussian-field reconstruction).
+- Hamm et al.: [arXiv:2506.20232](https://arxiv.org/abs/2506.20232), [arXiv:2603.11856](https://arxiv.org/abs/2603.11856), [arXiv:2608.03835](https://arxiv.org/abs/2608.03835) (TCV tomography, open geometry).
+- The theory of data augmentation and Gibbs convergence: Amit (1991), Liu, Wong & Kong (1994), Roberts & Sahu (1997).
+- More references in [`docs/related_work.md`](docs/related_work.md).
 
 ## License
 
-MIT
+MIT. The vendored TCV data in `tomo/data/tcv/` is MIT-licensed by its authors; see `tomo/data/tcv/NOTICE.md`.

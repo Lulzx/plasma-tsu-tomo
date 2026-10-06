@@ -72,6 +72,86 @@ JAX is used inside samplers. Units: metres, emissivity in arbitrary units (W/m^3
 - `sample_ising_variant(problem, variant, cfg, key) -> result dict` (same keys as Potts).
 
 ## tomo/energy.py
-- `tsu_estimate(n_spins, n_sweeps, n_chains, n_blocks, E_cell=1.3e-15, t_update=100e-9) -> dict(energy_J, latency_s)`
-- `sensitivity(n_spins, n_sweeps, n_chains, n_blocks, E_cell_factors=(0.5,1,3), t_updates=(50e-9,100e-9,500e-9)) -> table`
-- `cpu_energy_from_powermetrics(log_path_or_watts, seconds)`, `gpu_mcmc_estimate(...)`.
+- `tsu_estimate(n_spins, n_sweeps, n_chains, n_blocks, E_cell=None, t_update=None, *, preset=None, include_readout=False, n_readout_nodes=None, n_readouts=1, n_physical_spins=None) -> dict(energy_J, latency_s, sampling/readout parts, assumptions)`.
+  - `HARDWARE` presets, each with a source string: `'spec'` (1.3 fJ, 100 ns per block), `'extropic_2510'` (about 2 fJ, 100 ns), and `'z1_2608'` (7.09 fJ per p-bit per Gibbs cycle, 20 ns per sweep on a 2-colour graph, else 10 ns per colour block; readout 1.692 pJ per node and 25 µs per frame).
+  - With no preset, the call returns exactly the original specification numbers.
+- `compare_presets(...)` builds the table of logical vs embedded layouts, with and without readout. `sensitivity(...)` and `worked_estimate(...)` cover the sensitivity range and the spec's worked example.
+- `cpu_energy_from_powermetrics(log_path_or_watts, seconds)`, `gibbs_op_counts`, `gpu_mcmc_estimate(...)`, `laptop_gibbs_estimate(...)`.
+
+---
+
+# Additions after the initial contract
+
+These modules were added during the project. Their signatures are equally stable.
+
+## tomo/baselines.py (additions)
+- `evidence_lambda(T, b, sigma, L, lams=None) -> float`: maximises the Gaussian marginal likelihood (empirical Bayes).
+- `discrepancy_lambda(...)` and `lcurve_lambda(...)`.
+- `tikhonov(..., method='gcv'|'discrepancy'|'lcurve'|'evidence')`.
+- `tuned_tikhonov(T, b, sigma, L, method='evidence')`: the "tuned" baseline. It also supplies the EBM warm start and the λ the EBMs use.
+
+## tomo/ebm_common.py
+- `prepare(problem, K, lam=None, eps_max_factor=1.2) -> EBMSetup`:
+  - computes the tuned-Tikhonov warm start, `eps_max` (from data only), `Delta`, `lam`, and `Q, c, const`;
+  - sets `problem.eps_max`.
+- `quadratic_form(problem, K, lam, Delta) -> (Q, c, const)` and `pixel_energy(x, Q, c, const)`.
+- Level conversions: `levels_from_eps` and `eps_from_levels`.
+- Domain-wall encoding:
+  - `dw_encode(x, K)` and `dw_decode(u) -> (x, valid)`;
+  - `invalid_fraction` and `dw_penalty_qubo`.
+- `pixel_quadratic_to_bit_qubo(Q, c, const, K, A, mask_pairs=None)`, `bit_energy`, and `auto_A(Q, c, K)`.
+- `make_result(...)`: builds the common result dict shared by every variant.
+- `gaussian_posterior(Q, c, beta=1.0)`.
+
+## tomo/ebm_chain.py (I-chain)
+- `build_ising_chain(problem, K, lam=None, A=None, tau=None, Kz=16, *, tau_mode='dz', group=1, compensate=False, comp_floor=0.1, window='local', ...) -> (IsingProblem, meta)`.
+- `sample_chain(problem, cfg=None, key=None, backend='jax', tau=None, *, init='tikhonov'|'random'|'half', compensate=None, ...) -> result dict`. Beyond the common keys, the result includes:
+  - `tau`, `n_aux` and `chain_invalid_frac`;
+  - `frozen_frac`, `rhat_med`, `rhat_q95` and `rhat_nonfinite_frac`;
+  - `converged`, `invalid_ok` and `eff_noise_ratio`;
+  - `comp_clamped_frac` and `s2`.
+- Helpers: `chain_layout`, `chain_energy`, `decode_chain` and `effective_noise_variance`.
+
+## tomo/ebm_tree.py (I-tree)
+- `build_ising_tree(problem, K, lam=None, A=None, tau=None, Kz=16, *, tau_mode='dz', compensate=...) -> (IsingProblem, meta)`.
+- `sample_tree(problem, cfg=None, key=None, ...) -> result dict`. It returns the same keys as `sample_chain`, plus `depth_max`, `colouring_used` and `n_pix_colours`.
+- Helpers: `balanced_tree`, `tree_layout`, `tree_energy` and `decode_tree`.
+- `ebm_ising.sample_ising_variant(problem, variant, cfg, key)` dispatches `'dense'`, `'sparse'`, `'chain'` and `'tree'`.
+
+## tomo/embed.py (degree-bounded embedding)
+- `embed_bounded_degree(prob, D=16, J_F=None, topology='tree'|'chain', jf_rule='cut'|'copy', margin=1.2) -> (prob_phys, meta)`:
+  - replaces each high-degree spin by copies bound with ferromagnetic `J_F`;
+  - an all-copies-agree state has exactly the logical energy.
+- `decode(spins_phys, meta, method='majority'|'first')` returns logical spins and the broken-bond fractions.
+- `auto_J_F`, `n_copies`, `logical_to_physical` and `embedding_summary`.
+- Encoding and precision analysis:
+  - `binary_bit_qubo(Qy, cy, const, nbits)`: power-of-two level encoding;
+  - `coupling_dynamic_range` and `coupling_quantisation(prob, bits=(4,6,8))`;
+  - `bipartite_relay_estimate`.
+
+## tomo/positive.py (positivity and discreteness comparators)
+- `truncated_gaussian_posterior(problem, lam, lower=0.0, upper=None, n_samples=500, n_warmup=200, n_chains=..., ...) -> result dict`: the exact continuous posterior truncated to a box, sampled by coordinate Gibbs with tail-safe univariate truncated-normal draws.
+- `truncated_gaussian_sample(P, h, lower, upper, ...)`: the generic version of the same sampler.
+- `gaussian_posterior_eps(problem, lam)` and `precision_system(problem, lam)`.
+- `log_laplace(problem, lam_f=None, ...)`: positivity via ε = exp(f), with a Laplace approximation. This is our re-implementation of the idea in Ueda & Nishiura, arXiv:2410.11454.
+
+## tomo/tcv.py (real TCV geometry)
+- `make_tcv_problem(cfg, phantom, seed) -> Problem` (the same dataclass as `forward.make_problem`).
+  - Phantoms: `peaked`, `hollow`, `blob`, `edge`, `divertor`, `random`, and `hamm:<k>` (the downloaded SOLPS phantoms).
+- Geometry: `tcv_chords()` (120 lines of sight), `tcv_vessel_polygon()`, `tcv_etendues()`, `make_tcv_grid(nr=20, nz=60)`, `tcv_mask(grid)`.
+- `make_tcv_phantom(...)` and `coverage_stats(T)`.
+- `fetch_tcv_data()`, also available as `python -m tomo.tcv --fetch`.
+- Vendored data is in `tomo/data/tcv/`, with an MIT notice.
+- `geometry.Grid` takes an optional `ny` for rectangular grids.
+
+## tomo/mixing_theory.py (linear-Gaussian mixing theory)
+- `build_joint(problem, kind='dense'|'chain'|'tree', *, K=8, lam=None, tau=0.75, tau_mode='dz', Kz=32, ...)`: the joint precision over pixels and auxiliaries, together with the samplers' colour classes.
+- Spectral radius:
+  - `gs_rho(P, cls)`: colour-block Gibbs;
+  - `sor_rho(P, cls, omega)`: over-relaxed Gibbs;
+  - `da_rate(P, nx)`: the two-block data-augmentation rate.
+- Autocorrelation:
+  - `relaxation_time(rho)` and `iat_from_rho(rho)`;
+  - `iat_functional(P, f)`, `iat_sup(P)` and `iat_pixel_sup(P, nx)`.
+- Diagnostics: `da_slowdown_closed`, `chord_sum_rayleigh`, `null_space_bound` and `standard_functionals`.
+- Simulation: `simulate_gs(P, cls, F, ...)`, an exact linear Gibbs simulation for validation, and `iat_series(y)`.
