@@ -42,7 +42,7 @@ E(x) = \tfrac{1}{2}\lVert (b - \Delta T x)/\sigma \rVert^2 + \tfrac{\lambda\Delt
 The catch is that $T^\top T$ couples every pair of pixels that share a chord, so each spin ends up with **hundreds to
 thousands of neighbours**. TSU hardware wants sparse, local couplings.
 
-## Four formulations, from reference to hardware-faithful
+## Formulations, from reference to hardware-faithful
 
 | Variant | Idea | Spins | Max degree | Gibbs blocks |
 |---|---|---:|---:|---:|
@@ -51,6 +51,7 @@ thousands of neighbours**. TSU hardware wants sparse, local couplings.
 | **I-sparse** | Drop weak or long-range pixel couplings | 5,642 | lower | ~140–196 |
 | **I-chain** ⭐ (K_z=16) | Running partial sums along each chord | 38,852 | 364 | **44** |
 | **I-chain** ⭐ (K_z=32, default) | Same, finer z grid so variance compensation applies | 74,276 | 716 | 76 |
+| **I-tree** (K_z=32) | Balanced binary tree of partial sums per chord (depth ⌈log₂ n⌉) | 72,044 | 468 | 114 |
 
 **I-chain** swaps each chord's long-range sum for a chain of auxiliary partial sums $z_{i,k}$ that runs physically
 along the chord:
@@ -76,6 +77,19 @@ The usable range is therefore Δz/2 ≲ τ ≲ σ/√n. Two fixes widen it:
 
 The derivations are in the docstring of [`tomo/ebm_chain.py`](tomo/ebm_chain.py).
 
+**The trade-off with a calibrated prior.** The z windows scale with the posterior spread of each partial sum. With the
+calibrated (evidence) λ described below, that spread is wider, Δz grows, and compensation is clamped on every chord. On
+the peaked phantom the chord variance is inflated by about 6.5× for the chain and 3× for the tree, against 1.5× and 1.05×
+with the stiffer discrepancy λ. Accurate likelihoods under a calibrated prior therefore need a finer z grid (K_z ≥ 64).
+
+**I-tree** ([`tomo/ebm_tree.py`](tomo/ebm_tree.py)) replaces each chain with a balanced binary tree of partial sums. The
+aim was to cut how far a pixel change has to travel to reach the data term, from n hops to log₂ n hops.
+- **What improved:** burn-in is 2–3× faster, the max degree is lower, and accuracy and coverage are slightly better on all 4 test cases.
+- **What did not:** it does **not** converge, and the hoped-for n² → (log n)² mixing gain does not appear.
+- **The real bottleneck:** plain dense Gibbs on the same posterior mixes in about 2 sweeps, while chain and tree need
+  hundreds. The cost is the auxiliary-variable construction itself, the classic data-augmentation slowdown, and not chain
+  length.
+
 ## Synthetic data
 
 The data are generated on a 128×128 grid with its own geometry matrix and reconstructed on 32×32, so the method is never
@@ -93,9 +107,10 @@ the maximum.
 
 ## Results so far
 
-### Classical baselines (M2, complete)
+### Classical baselines (M2)
 
 The baselines ran on the four phantoms and on 200 Gaussian random fields, with identical noise draws for every method.
+The figures and table below use the earlier, discrepancy-principle "tuned" λ. They will be regenerated with the evidence λ.
 
 <img src="docs/figures/reconstructions.png" width="100%" alt="Truth and baseline reconstructions (Tikhonov GCV, tuned Tikhonov, MFI, GP mean and std) for five phantoms">
 
@@ -111,9 +126,26 @@ The baselines ran on the four phantoms and on 200 Gaussian random fields, with i
 With only 72 chords, every method struggles on the hollow and edge profiles. The figure shows this honestly, and it is
 the regime where a better prior should pay off.
 
+### Choosing λ for calibrated uncertainty
+
+Low coverage was a *model* problem, not a sampler problem. Even the exact Gaussian posterior under-covered with the
+discrepancy-principle λ, which is 6–10× too stiff. "Tuned" λ is now chosen by maximising the Gaussian marginal likelihood
+(`baselines.evidence_lambda`, empirical Bayes, data only). The table below is for the exact Gaussian posterior with each λ:
+
+| Problems | rel. L2 (discrepancy → evidence) | 95% coverage (discrepancy → evidence) |
+|---|---:|---:|
+| 30 random fields | 0.353 → **0.336** | 0.70 → **0.95** |
+| blob (3 seeds) | 0.770 → 0.777 | 0.54 → **0.95** |
+| edge (3 seeds) | 0.591 → 0.605 | 0.63 → **0.95** |
+| peaked (3 seeds) | 0.310 → 0.283 | 0.69 → 1.00 |
+| hollow (3 seeds) | 0.653 → 0.654 | 0.37 → 0.76 |
+
+The hollow profile is not identifiable from 72 chords at any λ, so it stays under-covered.
+
 ### Energy-based models (M3, preliminary)
 
-These are single-seed runs measured on a shared, heavily loaded machine. The full M3 tables come from `make m3`.
+These are single-seed runs on a shared, heavily loaded machine, using the earlier discrepancy λ. A full M3 run with the
+evidence λ, overdispersed starts for every variant, and I-tree is in progress. It writes `report/results_table.md`.
 
 | Method | Peaked | Hollow | Uncertainty |
 |---|---:|---:|:-:|
@@ -128,10 +160,34 @@ These are single-seed runs measured on a shared, heavily loaded machine. The ful
 **Targets from the spec, and where they stand:**
 
 - ✅ **Accuracy within 1.2× of tuned Tikhonov:** met by Potts, I-dense and I-chain on the phantoms shown. GP and MFI are still more accurate.
-- ✅ **Bounded-degree Ising model, documented:** I-chain.
+- ✅ **Bounded-degree Ising model, documented:** I-chain and I-tree. Their degree is bounded by camera geometry, not grid size, but it is still far above real chips (see below).
 - ⚠️ **Under 60 s per 32×32 reconstruction:** Potts meets it at about 52 s. The batched JAX sampler projects about 62 s for the I-chain full schedule, but only at K_z=16 and under load. The dense Ising variant is limited by its 315 sequential blocks.
-- ❌ **95% intervals covering 90–98% of pixels:** not met. I-chain covers about 0.55–0.60, and GP 0.89.
-- ❌ **Convergence (split R-hat below 1.05):** not met for I-chain or dense Ising. Mixing along the chains, which takes about n² sweeps per chord, is the main open problem.
+- ⚠️ **95% intervals covering 90–98% of pixels:** met by the exact Gaussian posterior with the evidence λ (0.95 on random fields). Measurement for the EBMs is pending in the full M3 run.
+- ❌ **Convergence (split R-hat below 1.05):** not met for I-chain, I-tree or dense Ising. The cause is the auxiliary-variable construction (see I-tree above).
+
+## Fitting real hardware
+
+Extropic's Z1 is a degree-16, 2-colourable graph with 269,568 p-bits. [`tomo/embed.py`](tomo/embed.py) compiles any of our
+models to degree ≤ 16 by splitting high-degree spins into ferromagnetically coupled copy trees (Sajeeb et al. 2025). The
+compiler is exact on small cases checked by enumeration.
+
+| Model (thermometer encoding) | Logical spins | Max degree | Spins at degree ≤ 16 | Overhead |
+|---|---:|---:|---:|---:|
+| I-chain, K_z=16 | 38,852 | 364 | 178,182 | 4.6× |
+| I-chain, K_z=32 | 74,276 | 716 | 620,967 | 8.4× |
+| I-tree (earlier build) | 37,772 | 244 | 190,889 | 5.1× |
+| I-sparse | 5,642 | 951 | 51,583 | 9.1× |
+| I-dense | 5,642 | 2,554 | 214,207 | 38× |
+
+The I-tree row comes from a build made while I-tree was still in development, so its spin count does not match the formulations table.
+
+**Copy-node embedding does not sample well.** On a small test problem:
+- **Strong copy couplings:** when they are strong enough to guarantee exactness (about 100× a typical coupling), every chain freezes.
+- **Weaker couplings:** 14–32% of copy bonds break, posterior means are off by 1–3 standard deviations, and mixing is about 10× slower.
+
+**Binary encoding** of levels is the more promising route. It cuts the I-chain to about 24k spins at degree ≤ 16
+(2.1× overhead). The cost is a coupling dynamic range that is 4–8 bits wider, on top of the existing 12–13 bits, and it
+has not yet been tested in sampling. Coupling precision, not only degree, is a hardware constraint here.
 
 ## TSU energy and latency model
 
@@ -150,8 +206,18 @@ drops.
 > - **Readout:** 1.69 pJ per node and 25 µs per frame.
 > - **Z1 chip:** a degree-16 graph.
 >
-> With those numbers, energy per frame rises to a few µJ to tens of µJ, which is still excellent. I-chain's degree of 364
-> or more would need further embedding before it fits Z1. Updating `tomo/energy.py` to these figures is on the roadmap.
+> `tomo/energy.py` now has presets for all three sources (`spec`, `extropic_2510`, `z1_2608`), plus readout and
+> embedded-spin options.
+>
+> | I-chain K_z=16, 16 chains, 2,500 sweeps (placeholder) | Energy / frame | Latency / frame |
+> |---|---:|---:|
+> | spec preset, logical model | 2.0 µJ | 11 ms |
+> | Z1 preset, logical model, with readout | 12 µJ | 1.1 ms |
+> | Z1 preset, embedded at degree 16, with readout | 55 µJ | 0.45 ms |
+>
+> The Z1 rows are optimistic. They charge 10 ns per colour block because our graphs are not 2-colourable, and they
+> ignore the mixing slowdown from embedding. Energy stays in the µJ range. Latency hinges on sweeps to convergence,
+> which is not yet achieved.
 
 `make m5` recomputes both numbers from the *measured* spin counts, block counts and sweeps to convergence. It also
 reports a sensitivity range of E_cell 0.5–3× and t_update 50–500 ns.
@@ -196,10 +262,11 @@ make all           # reproduce every figure and table
 |---|---|---|
 | M1 Geometry and phantoms | `make m1` | chord fans, phantom library, Siddon validation |
 | M2 Classical baselines | `make m2` | Tikhonov / MFI / GP on 4 phantoms + 200 random fields |
-| M3 EBM reconstructions | `make m3` | Potts, I-dense, I-sparse, I-chain vs baselines, plus diagnostics |
+| M3 EBM reconstructions | `make m3` | Potts, I-dense, I-chain, I-tree vs baselines, plus diagnostics |
 | M4 Ablations | `make m4` | K levels, τ, sparsification threshold, noise level |
 | M5 TSU estimate | `make m5` | energy and latency per frame, sensitivity analysis |
 | M6 Summary | `make m6` | `report/results_table.md`, figures |
+| Embedding | `python experiments/embed_report.py`, `embed_sampling.py` | degree-16 embedding tables, embedded sampling check |
 
 Every script takes `--config` (merged over [`configs/default.yaml`](configs/default.yaml)), `--out`, and `--quick`. The
 merged config is saved next to each run's outputs, and all seeds come from the config.
@@ -212,11 +279,13 @@ tomo/
   geometry.py          grid, D-shaped mask, chord fans, Siddon ray tracing → T
   phantoms.py          peaked / hollow / blob / edge / Gaussian random fields
   forward.py           fine-grid data generation, noise model
-  baselines.py         Tikhonov (GCV, discrepancy), minimum Fisher information, GP tomography
+  baselines.py         Tikhonov (GCV, discrepancy, evidence), minimum Fisher information, GP tomography
   ebm_common.py        quadratic form, domain-wall encoding, bit QUBO
   ebm_potts.py         Variant P (thrml CategoricalNode)
   ebm_ising.py         I-dense and I-sparse
   ebm_chain.py         I-chain (main contribution)
+  ebm_tree.py          I-tree (binary tree of partial sums)
+  embed.py             degree-bounded copy-node embedding, binary encoding, coupling precision
   sampling.py          thrml-backed block Gibbs, annealing, parallel tempering, fast JAX backend
   metrics.py           relative L2, SSIM, peak error, χ², coverage, split R-hat
   energy.py            TSU energy and latency model, CPU/GPU comparisons
@@ -235,9 +304,9 @@ docs/                  spec, module interfaces, figures
 ## Where this departs from the spec
 
 - **Gibbs blocks.** A 2-colour pixel checkerboard is not a valid blocking once $T^\top T$ is present. Potts needs 48 blocks and dense Ising 315. Only I-chain achieves the spec's 44.
-- **Choice of λ.** "Tuned Tikhonov" uses the discrepancy principle (χ²/M = 1). With M = 72 ≪ N = 806, generalised cross-validation (GCV) interpolates the data (χ²/M ≈ 0.01).
+- **Choice of λ.** "Tuned Tikhonov", and the λ the EBMs sample with, maximise the Gaussian marginal likelihood (evidence). This is the choice that gives calibrated uncertainty. The discrepancy principle (χ²/M = 1) and GCV remain available.
 - **I-chain limit.** τ → 0 does *not* recover the exact posterior when z is discrete; the chain becomes rigid instead. See the `ebm_chain.py` docstring for the usable τ window.
-- **Timings.** The wall-clock times above were measured on a shared, loaded machine and will be re-measured in isolation.
+- **Timings.** The wall-clock times above were measured on a shared, loaded machine. Every experiment log records the load average.
 
 ## References
 
