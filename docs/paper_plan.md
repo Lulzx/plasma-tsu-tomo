@@ -21,11 +21,11 @@ The paper has one story told in two parts.
 | A2 | Discrete positive posterior: calibrated coverage, competitive accuracy | M3 + multi-seed run | done: 68 problems on two geometries, all converged. Potts coverage 0.80–0.98 (GP 0.55–0.97). Accuracy tied with Tikhonov (29/50, p = 0.32; TCV 13/18); GP and MFI more accurate on average |
 | A3 | The gain comes from positivity / bound / discreteness (decomposed) | `experiments/route2_ablation.py` | done (7 problems): positivity 0.476 → 0.420; discreteness adds nothing; K = 7–9 equivalent |
 | A4 | Holds on real geometry | TCV bolometer lines of sight (Hamm et al. open code) | done: TCV multi-seed (18 problems); Potts best on TCV hollow and calibrated 0.90–0.98 |
-| A5 | Practical: converged (R-hat < 1.05) in under 60 s | timings with load recorded | synthetic 35–43 s; TCV 81–93 s (over target; loaded machine). Clean re-timing still open |
+| A5 | Practical: converged (R-hat < 1.05) in under 60 s | timings with load recorded | done: balanced colour blocks give TCV 31 s, synthetic 21 s (same-load A/B). Clean multi-repeat timing + measured power: `results/timing/` |
 | B1 | Bounded-degree exact embedding: construction, σ² + nτ² accounting, compensation, τ window | `ebm_chain` / `ebm_tree` docstrings and tests | done |
 | B2 | Mixing barrier explained: Gibbs spectral radius / missing-information theory predicts the measured slowdown | `docs/mixing_theory.md`, predicted vs measured autocorrelation time | done: theory within 5–20% of linear simulation, ratios within 2× of the discrete samplers, structural proposition proved |
 | B3 | A calibrated prior worsens the barrier (and the noise inflation) | theory + measurements | done: slowdown ∝ 1/λ (about 8×); noise inflation 6.5× chain, 3× tree |
-| B4 | Degree-16 copy embedding freezes or biases; binary encoding trades degree for coupling precision | `tomo/embed.py`, `experiments/embed_*.py` | done (binary sampling untested) |
+| B4 | Degree-16 copy embedding freezes or biases; binary encoding trades degree for coupling precision | `tomo/embed.py`, `experiments/embed_*.py` | done: binary sampled — same posterior as thermometer, 2.3× fewer spins, total-power IAT 3.3× worse; freezes when embedded |
 | B5 | Hardware cost under published Extropic numbers, with honest latency | `tomo/energy.py` presets, M5 | M5 done with measured sweeps: Potts 39 nJ / 11 ms, I-dense 0.28 µJ / 75 ms, I-chain ≥ 10.8 µJ / 53 ms (not converged) |
 
 ## Required comparisons

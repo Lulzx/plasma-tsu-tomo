@@ -74,6 +74,25 @@ A 2-colour checkerboard is **not** a valid Gibbs blocking once TᵀT is in the e
 | I-chain, K_z = 32 (default) | 74,276 | 716 | 76 |
 | I-tree, K_z = 32 | 72,044 | 468 | 114 |
 
+## 4a. Balanced colour blocks (Potts speed-up)
+
+Source: `tomo.sampling.balance_coloring`, `experiments/timing.py`.
+
+The JAX block sweep pads every colour block to the largest one, so it costs n_blocks × max_block rows of a dense
+matvec. Greedy colouring leaves a few large classes, giving 1.67× padded rows per pixel on the default geometry and
+2.55× on TCV. `balance_coloring` moves vertices into the smallest class none of their neighbours uses. The number of
+colours is unchanged and the colouring stays proper; padding drops to 1.01× (default) and 1.007× (TCV). Potts uses
+it by default (`build_potts(..., balance=True)`).
+
+Same-load A/B (load 8–10, full schedule 2,000 + 5,000 sweeps, 16 chains, peaked, CPU):
+
+| Geometry | Greedy blocks | Balanced blocks | Speed-up |
+|---|---|---|---|
+| Default (806 pixels) | 38.0 s | 20.7 s | 1.8× |
+| TCV (1,148 pixels) | 81.3 s | 31.5 s | 2.6× |
+
+R-hat (1.002), rel-L2 and coverage are unchanged. Clean multi-repeat timings: `results/timing/timing.md`.
+
 ## 5. Main EBM comparison (M3)
 
 Source: `experiments/m3_ebm.py` → `results/m3_ebm/results_table.md`.
@@ -165,8 +184,8 @@ Paired win rates over all 18 problems:
 | Potts vs GP | 6 / 12 | 0.24 |
 | Potts vs MFI | 3 / 15 | 0.008 |
 
-Every run converges. Potts takes 81–93 s here, which is over the 60 s target, on a loaded machine and with 1,148
-pixels.
+Every run converges. Potts took 81–93 s here, which was over the 60 s target, on a loaded machine and with 1,148
+pixels. Balanced colour blocks (§4a) bring the same run to about 31 s.
 
 ### Reading
 
@@ -368,7 +387,27 @@ I-tree embeds to 190,889 spins at K_z = 16 (5.1×) and 656,301 at K_z = 32 (9.1�
 | ≥ 8, including the exactness value (~100× a typical coupling) | Frozen at the start |
 | 1–4 | 14–32% of copy bonds broken; posterior means off by 1–3 sd; autocorrelation 9–14× longer |
 
-**Binary level encoding** cuts I-chain to about 24k spins at degree 16 (2.1× overhead). The cost is 4–8 more bits of coupling dynamic range on top of the existing 12–13 bits; at 8 bits, 32–87% of couplings round to zero. Not yet sampled.
+**Binary level encoding** cuts I-chain to about 24k spins at degree 16 (2.1× overhead). The cost is 4–8 more bits of coupling dynamic range on top of the existing 12–13 bits; at 8 bits, 32–87% of couplings round to zero.
+
+**Sampling the binary model** (`tomo/ebm_binary.py`, `experiments/binary_encoding.py`,
+`results/binary_encoding/results.md`). Pixel-only dense model, K = 8 (3 bits per pixel), default problem, peaked,
+same schedule as I-dense:
+
+| | Thermometer (I-dense) | Binary |
+|---|---|---|
+| rel-L2 / 95% coverage | 0.258 / 0.979 | 0.258 / 0.979 |
+| R-hat max | 1.002 | 1.027 |
+| IAT, total power (sweeps) | 17.7 | 58.5 |
+| IAT, chord data median / max | 9.7 / 11.3 | 11.3 / 19.0 |
+| Spins / colours / max degree | 5,642 / 315 / 2,554 | 2,418 / 144 / 1,094 |
+| Couplings that vanish at 8 bits | 99.3% | 97.2% |
+
+The two posteriors agree (means differ by rel-L2 0.008; median std ratio 1.001). Carries cost mixing only in the
+collective total-power mode (3.3×). Gray code would make the energy non-quadratic in the bits, so it needs
+auxiliary spins. Embedded to degree 16 (tiny problem, tree copies), binary freezes at the exact J_F just like
+thermometer (98% of pixels frozen at the start); at J_F = 1–4 it moves, but 22–35% of copy bonds break and means are
+off by about 1 sd. **Verdict:** binary is a good logical encoding (2.3× fewer spins and colours, same posterior) but
+does not fix the degree-16 embedding.
 
 ## 11. Energy and latency
 
@@ -412,6 +451,6 @@ See §5a for Potts and I-sparse on TCV.
 ## 13. Open items
 
 - Clean timings on an idle machine. Many of the later runs shared the CPU with unrelated jobs (load 25–55).
-- Speed up Potts on TCV, which takes 81–93 s with 1,148 pixels.
-- Sample the binary-encoded models.
+- ~~Speed up Potts on TCV~~: done, balanced colour blocks (§4a), 81 s → 31 s.
+- ~~Sample the binary-encoded models~~: done (§10).
 - Measure laptop power with `powermetrics` instead of assuming 20 W.

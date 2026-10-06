@@ -50,6 +50,7 @@ JAX is used inside samplers. Units: metres, emissivity in arbitrary units (W/m^3
 
 ## tomo/sampling.py   (thrml-backed sampling infrastructure shared by all EBM variants)
 - `greedy_coloring(n_nodes, edges) -> (n_nodes,) int colours` (no two coupled nodes share a colour).
+- `balance_coloring(n_nodes, edges, colors, max_passes=20) -> colours`: equalises class sizes with the same number of colours (removes the padded-sweep waste; Potts uses it by default).
 - `IsingProblem` dataclass: `h (n,) , J (sparse COO: rows, cols, vals with i<j), offset` in **±1 spin convention**
   with energy `E(s) = -sum h_i s_i - sum J_ij s_i s_j + offset`. Helper `bits_to_spins_qubo(Qb, cb, const)`
   converts bit energy `E(u) = u^T Qb u + cb^T u + const` (u in {0,1}, Qb symmetric, zero diag folded) to IsingProblem.
@@ -61,7 +62,7 @@ JAX is used inside samplers. Units: metres, emissivity in arbitrary units (W/m^3
 
 ## tomo/ebm_potts.py
 - `quadratic_form(problem, K, lam) -> (Q (N,N), c (N,), const, Delta)` with E(x)=1/2 x^T Q x - c^T x + const, matching spec eq.
-- `build_potts(problem, K, lam, beta=1.0)` -> thrml model objects; `sample_potts(problem, K, lam, cfg, key) -> result dict`
+- `build_potts(problem, K, lam, beta=1.0, ..., balance=True)` -> thrml model objects; `sample_potts(problem, K, lam, cfg, key, ..., balance=True) -> result dict`
   result dict (all EBM variants): `{'mean','std','map','samples' (C,S,N) emissivity, 'rhat','energy_trace','n_blocks','n_spins','max_degree','time','invalid_frac'}`.
 
 ## tomo/ebm_ising.py
@@ -76,7 +77,7 @@ JAX is used inside samplers. Units: metres, emissivity in arbitrary units (W/m^3
   - `HARDWARE` presets, each with a source string: `'spec'` (1.3 fJ, 100 ns per block), `'extropic_2510'` (about 2 fJ, 100 ns), and `'z1_2608'` (7.09 fJ per p-bit per Gibbs cycle, 20 ns per sweep on a 2-colour graph, else 10 ns per colour block; readout 1.692 pJ per node and 25 µs per frame).
   - With no preset, the call returns exactly the original specification numbers.
 - `compare_presets(...)` builds the table of logical vs embedded layouts, with and without readout. `sensitivity(...)` and `worked_estimate(...)` cover the sensitivity range and the spec's worked example.
-- `cpu_energy_from_powermetrics(log_path_or_watts, seconds)`, `gibbs_op_counts`, `gpu_mcmc_estimate(...)`, `laptop_gibbs_estimate(...)`.
+- `cpu_energy_from_powermetrics(log_path_or_watts, seconds)`; `powermetrics_samples(log) -> [(end_epoch_s, interval_s, cpu_W)]` and `cpu_energy_in_window(log, t_start, t_end, idle_W=None)` for per-run energy from a timestamped default-format log; `gibbs_op_counts`, `gpu_mcmc_estimate(...)`, `laptop_gibbs_estimate(...)`.
 
 ---
 
@@ -155,3 +156,12 @@ These modules were added during the project. Their signatures are equally stable
   - `iat_functional(P, f)`, `iat_sup(P)` and `iat_pixel_sup(P, nx)`.
 - Diagnostics: `da_slowdown_closed`, `chord_sum_rayleigh`, `null_space_bound` and `standard_functionals`.
 - Simulation: `simulate_gs(P, cls, F, ...)`, an exact linear Gibbs simulation for validation, and `iat_series(y)`.
+
+## tomo/ebm_binary.py (binary level encoding)
+- `n_bits(K)`, `binary_encode(x, K)`, `binary_decode(u, K=None)`: level <-> bits, least significant bit first (bit `j*nb+m` is bit m of pixel j).
+- `build_ising_binary(problem, K, lam=None, setup=None, eps_max_factor=1.2) -> (IsingProblem, meta)`: pixel-only dense model with x_j = sum_m 2^m u_jm (K a power of two, no domain-wall penalty); `meta` holds the colouring, `n_blocks`, `max_degree`.
+- `sample_binary(problem, cfg, key, backend='jax', setup=None, schedule=None, n_chains=None, overdispersed=True, K=None)`: standard result dict (`invalid_frac` = 0) plus `levels`, `rhat_max`, `meta`, `setup`.
+
+## experiments (additions)
+- `experiments/binary_encoding.py`: binary vs thermometer sampling, coupling precision, degree-16 embedded check -> `results/binary_encoding/`.
+- `experiments/timing.py [--repeats N] [--variants potts,potts_greedy,sparse] [--geometries default,tcv] [--wait-powermetrics]`: wall-clock timings with load and epoch windows -> `results/timing/`; `--attach-power pm_run.log --idle-log pm_idle.log` adds measured CPU energy per run.

@@ -47,7 +47,7 @@ from thrml.models.discrete_ebm import (CategoricalEBMFactor, CategoricalGibbsCon
 from thrml.models.ebm import FactorizedEBM
 
 from .ebm_common import EBMSetup, make_result, prepare, quadratic_form
-from .sampling import check_coloring, geometric_betas, greedy_coloring
+from .sampling import balance_coloring, check_coloring, geometric_betas, greedy_coloring
 
 __all__ = ["PottsModel", "build_potts", "build_potts_from_Q", "PottsSampler", "sample_potts",
            "coupling_split"]
@@ -117,8 +117,12 @@ def coupling_split(setup: EBMSetup) -> dict:
     return dict(frac_laplacian=l / (g + l), frac_TtT=g / (g + l), offdiag_l1_TtT=g, offdiag_l1_lap=l)
 
 
-def build_potts_from_Q(Q, c, const, K, beta=1.0, colors=None, build_thrml=True, tol=0.0) -> PottsModel:
-    """Build the Potts model (colouring + thrml program) from an explicit quadratic form."""
+def build_potts_from_Q(Q, c, const, K, beta=1.0, colors=None, build_thrml=True, tol=0.0,
+                       balance=True) -> PottsModel:
+    """Build the Potts model (colouring + thrml program) from an explicit quadratic form.
+
+    ``balance`` equalises the colour-class sizes (``sampling.balance_coloring``), which removes the padding
+    waste of the JAX sweep (2.5x on TCV) without changing the number of colours."""
     t0 = time.perf_counter()
     Q = np.asarray(Q, float)
     c = np.asarray(c, float)
@@ -128,6 +132,8 @@ def build_potts_from_Q(Q, c, const, K, beta=1.0, colors=None, build_thrml=True, 
     edges = np.stack([iu, ku], axis=1)
     if colors is None:
         colors = greedy_coloring(N, edges)
+        if balance:
+            colors = balance_coloring(N, edges, colors)
     if not check_coloring(N, edges, colors):
         raise AssertionError("colouring is not proper for the coupling graph of Q")
     _, cid = np.unique(colors, return_inverse=True)
@@ -154,11 +160,11 @@ def build_potts_from_Q(Q, c, const, K, beta=1.0, colors=None, build_thrml=True, 
 
 
 def build_potts(problem, K, lam=None, beta=1.0, setup: EBMSetup | None = None, eps_max_factor=1.2,
-                build_thrml=True) -> PottsModel:
+                build_thrml=True, balance=True) -> PottsModel:
     """Potts model of the tomography posterior (``setup`` from ``ebm_common.prepare`` is reused if given)."""
     if setup is None:
         setup = prepare(problem, K, lam, eps_max_factor)
-    m = build_potts_from_Q(setup.Q, setup.c, setup.const, K, beta, build_thrml=build_thrml)
+    m = build_potts_from_Q(setup.Q, setup.c, setup.const, K, beta, build_thrml=build_thrml, balance=balance)
     m.setup = setup
     return m
 
@@ -355,7 +361,7 @@ def sample_potts(problem, K, lam, cfg, key, backend: str = "jax", setup: EBMSetu
                  n_chains: int | None = None, posterior: dict | None = None, anneal: dict | None = None,
                  init: str | None = None, jitter: float = 0.3, do_map: bool = True,
                  model: PottsModel | None = None, eps_max_factor: float = 1.2,
-                 frac_random: float = 0.25) -> dict:
+                 frac_random: float = 0.25, balance: bool = True) -> dict:
     """Posterior (beta=1) + annealed-MAP reconstruction with the Potts model.
 
     Schedules default to ``cfg['schedule']`` (override with ``posterior``/``anneal`` dicts). Returns the
@@ -363,7 +369,8 @@ def sample_potts(problem, K, lam, cfg, key, backend: str = "jax", setup: EBMSetu
     ``time_anneal``, ``compile_time``, ``build_time``, ``setup``, ``backend``, ``lam``, ``delta`` (level step),
     ``levels`` (C,S,N uint8 samples), ``map_lev`` (MAP levels), ``frac_top`` (fraction of samples at the
     top level K-1: eps_max truncation diagnostic), ``eps_max``, ``n_random_chains``. ``frac_random`` of the chains
-    start from uniformly random levels (rest: jittered Tikhonov). ``eps_max_factor`` scales eps_max.  ``time`` = sampling wall time (posterior +
+    start from uniformly random levels (rest: jittered Tikhonov). ``eps_max_factor`` scales eps_max; ``balance``
+    equalises colour blocks (see ``build_potts_from_Q``).  ``time`` = sampling wall time (posterior +
     anneal, excluding compilation and model build).
     """
     sc = cfg["schedule"]
@@ -373,7 +380,7 @@ def sample_potts(problem, K, lam, cfg, key, backend: str = "jax", setup: EBMSetu
     init = init or sc.get("init", "tikhonov")
     if model is None:
         model = build_potts(problem, K, lam, setup=setup, eps_max_factor=eps_max_factor,
-                            build_thrml=(backend == "thrml"))
+                            build_thrml=(backend == "thrml"), balance=balance)
     setup = model.setup
     sm = PottsSampler(model, backend)
     k_init, k_post, k_ann = jax.random.split(key, 3)

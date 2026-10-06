@@ -25,7 +25,7 @@ Two interchangeable backends implement the same colour-block Gibbs sweep:
 Float precision: everything is float32 (JAX default).  Energies of very large problems are
 therefore accurate to ~1e-6 relative, which is irrelevant for sampling.
 
-Public API: ``IsingProblem``, ``bits_to_spins_qubo``, ``greedy_coloring``,
+Public API: ``IsingProblem``, ``bits_to_spins_qubo``, ``greedy_coloring``, ``balance_coloring``,
 ``check_coloring``, ``IsingSampler``, ``run_ising``, ``anneal_ising``,
 ``parallel_tempering``, ``ising_energy``, ``geometric_betas``, ``SCHEDULES``.
 """
@@ -47,7 +47,7 @@ from thrml.models.discrete_ebm import DiscreteEBMInteraction
 from thrml.models.ising import IsingEBM, IsingSamplingProgram, hinton_init
 
 __all__ = [
-    "IsingProblem", "bits_to_spins_qubo", "greedy_coloring", "check_coloring",
+    "IsingProblem", "bits_to_spins_qubo", "greedy_coloring", "balance_coloring", "check_coloring",
     "IsingSampler", "run_ising", "anneal_ising", "parallel_tempering",
     "ising_energy", "geometric_betas", "SCHEDULES", "ANNEAL", "TEMPERING",
 ]
@@ -193,6 +193,37 @@ def greedy_coloring(n_nodes: int, edges) -> np.ndarray:
         nb = nb[(nb >= 0) & (nb < len(used))]
         used[nb] = True
         colors[v] = np.argmin(used)  # first False
+    return colors
+
+
+def balance_coloring(n_nodes: int, edges, colors, max_passes: int = 20) -> np.ndarray:
+    """Equalise colour-class sizes without adding colours, keeping the colouring proper.
+
+    Greedy colouring leaves a few large classes and many small ones. A padded block sweep (the JAX
+    backends) costs n_blocks * max_block_size rows, so on TCV the imbalance costs 2.5x. Each pass moves
+    vertices out of oversized classes into the smallest class that none of their neighbours uses.
+    """
+    colors = np.asarray(colors, dtype=np.int64).copy()
+    A = _csr_adj(n_nodes, np.asarray(edges, dtype=np.int64).reshape(-1, 2))
+    k = int(colors.max()) + 1 if n_nodes else 0
+    target = int(np.ceil(n_nodes / max(k, 1)))
+    for _ in range(max_passes):
+        sizes = np.bincount(colors, minlength=k)
+        moved = 0
+        for v in np.argsort(-sizes[colors], kind="stable"):
+            if sizes[colors[v]] <= target:
+                continue
+            used = np.zeros(k, dtype=bool)
+            used[colors[A.indices[A.indptr[v]:A.indptr[v + 1]]]] = True
+            cand = np.flatnonzero(~used & (sizes < sizes[colors[v]] - 1))
+            if len(cand):
+                c = cand[np.argmin(sizes[cand])]
+                sizes[colors[v]] -= 1
+                sizes[c] += 1
+                colors[v] = c
+                moved += 1
+        if not moved:
+            break
     return colors
 
 

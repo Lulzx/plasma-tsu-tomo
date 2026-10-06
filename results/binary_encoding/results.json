@@ -1,0 +1,162 @@
+{
+ "schedule": {
+  "n_warmup": 2000,
+  "n_samples": 500,
+  "steps_per_sample": 10
+ },
+ "K": 8,
+ "main": {
+  "thermometer": {
+   "rel_l2": 0.25778813534982326,
+   "coverage95": 0.9789081885856079,
+   "rhat_max": 1.0023461051290707,
+   "rhat_median": 1.0002016398698323,
+   "iat_total_power_sweeps": 17.65811032275907,
+   "iat_chord_median_sweeps": 9.716059967232958,
+   "iat_chord_max_sweeps": 11.26738233016708,
+   "iat_pixel_median_sweeps": 10.842231146638115,
+   "n_spins": 5642,
+   "n_blocks": 315,
+   "max_degree": 2554,
+   "wall_s": 76.49481599999126,
+   "invalid_frac": 0.0,
+   "dyn_range_bits": 52.87906220829671,
+   "bits_max_over_p1": 20.603748899572803,
+   "bits_max_over_p50": 14.39222180455675,
+   "zero_frac_8bit": 0.9928601824828525,
+   "zero_frac_6bit": 0.9937957170477049,
+   "zero_frac_4bit": 0.9946836706998751
+  },
+  "binary": {
+   "rel_l2": 0.2575329286427958,
+   "coverage95": 0.9789081885856079,
+   "rhat_max": 1.0268831672514038,
+   "rhat_median": 1.0009002932346014,
+   "iat_total_power_sweeps": 58.528000796482054,
+   "iat_chord_median_sweeps": 11.30954626489268,
+   "iat_chord_max_sweeps": 18.970506889223852,
+   "iat_pixel_median_sweeps": 11.940677314501205,
+   "n_spins": 2418,
+   "n_blocks": 144,
+   "max_degree": 1094,
+   "wall_s": 14.701748749997932,
+   "invalid_frac": 0.0,
+   "dyn_range_bits": 62.80162327023073,
+   "bits_max_over_p1": 20.10776070728004,
+   "bits_max_over_p50": 13.291555826663737,
+   "zero_frac_8bit": 0.9719604738767266,
+   "zero_frac_6bit": 0.9935688158541246,
+   "zero_frac_4bit": 0.9968772178850248
+  }
+ },
+ "agreement": {
+  "mean_rel_l2_binary_vs_thermometer": 0.00792739391383051,
+  "std_ratio_median": 1.0007070310232367
+ },
+ "embedded": [
+  {
+   "model": "binary",
+   "embed": "none",
+   "n_spins": 342,
+   "max_degree": 233,
+   "dmean_over_sd_med": 0.0,
+   "broken_edge": 0.0,
+   "rhat_med": 1.0124467489074953,
+   "wall_s": 0.7349369589937851
+  },
+  {
+   "model": "binary",
+   "embed": "tree D=16 J_F=433 (auto)",
+   "n_spins": 1899,
+   "overhead": 5.552631578947368,
+   "max_degree": 16,
+   "dyn_range_bits": 64.75658180712962,
+   "dmean_over_sd_med": 2.1800767740594615,
+   "dmean_over_sd_max": 93.43934396855013,
+   "broken_edge": 0.0,
+   "frozen_pixel_frac": 0.9824561403508771,
+   "rhat_med": "inf",
+   "wall_s": 1.2152779580210336
+  },
+  {
+   "model": "binary",
+   "embed": "tree D=16 J_F=1",
+   "n_spins": 1899,
+   "overhead": 5.552631578947368,
+   "max_degree": 16,
+   "dyn_range_bits": 63.23826750899502,
+   "dmean_over_sd_med": 0.9951760888736019,
+   "dmean_over_sd_max": 5.496716957557213,
+   "broken_edge": 0.34769187540141294,
+   "frozen_pixel_frac": 0.0,
+   "rhat_med": 1.1216692765442042,
+   "wall_s": 1.064376207999885
+  },
+  {
+   "model": "binary",
+   "embed": "tree D=16 J_F=4",
+   "n_spins": 1899,
+   "overhead": 5.552631578947368,
+   "max_degree": 16,
+   "dyn_range_bits": 63.23826750899502,
+   "dmean_over_sd_med": 0.9788616453451038,
+   "dmean_over_sd_max": 5.341635819752221,
+   "broken_edge": 0.21824943802183688,
+   "frozen_pixel_frac": 0.0,
+   "rhat_med": 2.0764483278712103,
+   "wall_s": 1.0662688750308007
+  },
+  {
+   "model": "thermometer",
+   "embed": "none",
+   "n_spins": 798,
+   "max_degree": 545,
+   "dmean_over_sd_med": 0.0,
+   "broken_edge": 0.0,
+   "rhat_med": 1.0003402498812268,
+   "wall_s": 2.840120541048236
+  },
+  {
+   "model": "thermometer",
+   "embed": "tree D=16 J_F=559 (auto)",
+   "n_spins": 10024,
+   "overhead": 12.56140350877193,
+   "max_degree": 16,
+   "dyn_range_bits": 53.71181728650522,
+   "dmean_over_sd_med": 2.201008933448346,
+   "dmean_over_sd_max": 73.97399814013352,
+   "broken_edge": 1.1877664571139534e-05,
+   "frozen_pixel_frac": 1.0,
+   "rhat_med": "inf",
+   "wall_s": 3.7405596249736845
+  },
+  {
+   "model": "thermometer",
+   "embed": "tree D=16 J_F=1",
+   "n_spins": 10024,
+   "overhead": 12.56140350877193,
+   "max_degree": 16,
+   "dyn_range_bits": 52.671564027198976,
+   "dmean_over_sd_med": 0.5747467416392738,
+   "dmean_over_sd_max": 21.835808345379746,
+   "broken_edge": 0.13657310183177973,
+   "frozen_pixel_frac": 0.0,
+   "rhat_med": 1.018444211556496,
+   "wall_s": 4.623720625007991
+  },
+  {
+   "model": "thermometer",
+   "embed": "tree D=16 J_F=4",
+   "n_spins": 10024,
+   "overhead": 12.56140350877193,
+   "max_degree": 16,
+   "dyn_range_bits": 52.671564027198976,
+   "dmean_over_sd_med": 1.0428064740090093,
+   "dmean_over_sd_max": 21.886068628242096,
+   "broken_edge": 0.046296460636606696,
+   "frozen_pixel_frac": 0.0,
+   "rhat_med": 11.891755151297367,
+   "wall_s": 4.943470041966066
+  }
+ ]
+}

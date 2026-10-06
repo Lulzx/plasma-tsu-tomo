@@ -194,7 +194,9 @@ What the two tables show:
 - **Potts is the only method calibrated everywhere.**
 - **I-sparse is accurate but miscalibrated.** Dropping couplings narrows its posterior.
 - **Time:**
-  - Potts takes 35–43 s on the synthetic geometry and 81–93 s on TCV, measured with other jobs loading the machine.
+  - Potts took 35–43 s on the synthetic geometry and 81–93 s on TCV in these runs, with other jobs loading the
+    machine. Balanced colour blocks (`tomo.sampling.balance_coloring`) remove the padding waste of the block sweep:
+    in a same-load A/B, TCV drops from 81 s to 31 s and synthetic from 38 s to 21 s, with identical results.
   - I-sparse takes 8–20 s.
 
 ### Ablations (M4, peaked phantom)
@@ -278,7 +280,9 @@ cases checked by enumeration.
 This is the same augmentation barrier, with copies in place of partial sums.
 
 **Binary encoding** of the levels cuts I-chain to about 24k spins at degree 16. It costs 4–8 more bits of coupling
-dynamic range, and it has not yet been sampled.
+dynamic range. Sampled at the logical level (`tomo/ebm_binary.py`), it gives the same posterior as thermometer
+I-dense with 2.3× fewer spins and colours; only the total-power mode mixes slower (3.3×). Embedded to degree 16, it
+freezes just like thermometer.
 
 ### Energy and latency
 
@@ -329,7 +333,7 @@ git clone https://github.com/Lulzx/plasma-tsu-tomo && cd plasma-tsu-tomo
 uv venv --python 3.11 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 
-pytest -q          # 217 tests, about 1 minute
+pytest -q          # 224 tests, about 1 minute
 make quick         # smoke-run every milestone script in a few minutes
 make all           # reproduce M1–M6 (several hours on a laptop)
 ```
@@ -348,6 +352,8 @@ make all           # reproduce M1–M6 (several hours on a laptop)
 | Mixing theory | `python experiments/mixing_theory.py` | `results/mixing_theory/`, `docs/figures/mixing_*.png` |
 | Degree-16 embedding | `python experiments/embed_report.py`, `python experiments/embed_sampling.py` | tables, sampling check |
 | TCV geometry check | `python -m tomo.tcv --fetch && python experiments/tcv_check.py` | `results/tcv_check/` |
+| Binary encoding | `python experiments/binary_encoding.py` | `results/binary_encoding/` |
+| Timings (+ measured CPU power) | `python experiments/timing.py --wait-powermetrics`, then `--attach-power pm_run.log --idle-log pm_idle.log` | `results/timing/` |
 
 Every script takes `--config` (merged over [`configs/default.yaml`](configs/default.yaml); TCV uses
 [`configs/tcv.yaml`](configs/tcv.yaml)), `--out` and `--quick`. The merged config is saved next to each run's outputs,
@@ -369,13 +375,14 @@ tomo/
   ebm_ising.py         I-dense, I-sparse, variant dispatcher
   ebm_chain.py         I-chain (partial-sum chains, compensation, local z windows)
   ebm_tree.py          I-tree (binary trees of partial sums)
+  ebm_binary.py        binary (power-of-two) level encoding
   sampling.py          thrml-backed block Gibbs, batched JAX backend, annealing, parallel tempering
   mixing_theory.py     linear-Gaussian Gibbs rates, autocorrelation, data-augmentation analysis
   embed.py             degree-bounded copy-node embedding, binary encoding, coupling precision
   metrics.py           relative L2, SSIM, peak error, χ², coverage, split R-hat
   energy.py            TSU energy and latency model with hardware presets
 experiments/           m1–m6 milestone scripts, ablations, mixing theory, embedding, TCV
-tests/                 217 tests, including exact-enumeration checks of every sampler
+tests/                 224 tests, including exact-enumeration checks of every sampler
 docs/                  FINDINGS.md, mixing_theory.md, related_work.md, paper_plan.md, INTERFACES.md, spec.md
 ```
 

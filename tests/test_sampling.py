@@ -245,3 +245,16 @@ def test_jax_batched_chains_independent_and_deterministic():
     b = run_ising(prob, colors, (5, 20, 1), 8, jax.random.key(0), sampler=sm)["samples"]
     assert np.array_equal(a, b)
     assert not np.array_equal(a[0], a[1])   # distinct chains
+
+
+def test_balance_coloring_proper_and_equal():
+    from tomo.sampling import balance_coloring, greedy_coloring
+    rng = np.random.default_rng(0)
+    n = 300
+    e = np.array([(i, j) for i in range(n) for j in range(i + 1, n) if rng.random() < 0.08])
+    c0 = greedy_coloring(n, e)
+    c = balance_coloring(n, e, c0)
+    assert check_coloring(n, e, c)
+    assert c.max() <= c0.max()
+    s0, s = np.bincount(c0), np.bincount(c)
+    assert s.max() <= s0.max() and s.max() <= int(np.ceil(n / len(s0))) + 2

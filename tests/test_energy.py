@@ -73,3 +73,15 @@ def test_physical_spins_energy_and_compare():
     # explicit overrides still win
     o = E.tsu_estimate(1000, 10, 2, 5, preset="z1_2608", E_cell=1e-15, t_update=1e-9)
     assert o["energy_J"] == pytest.approx(1000 * 10 * 2 * 1e-15) and o["latency_s"] == pytest.approx(10 * 5 * 1e-9)
+
+
+def test_powermetrics_window(tmp_path):
+    from tomo.energy import cpu_energy_in_window, powermetrics_samples
+    blk = ("*** Sampled system activity (Tue Oct  6 16:36:{s:02d} 2026 +0530) (1000.00ms elapsed) ***\n"
+           "junk\nCPU Power: {mw} mW\nGPU Power: 5 mW\n\n")
+    f = tmp_path / "pm.log"
+    f.write_text("".join(blk.format(s=s, mw=mw) for s, mw in [(1, 1000), (2, 3000), (3, 3000), (4, 1000)]))
+    smp = powermetrics_samples(f)
+    assert len(smp) == 4 and smp[1][2] == 3.0 and smp[1][0] - smp[0][0] == 1.0
+    r = cpu_energy_in_window(f, smp[0][0], smp[2][0], idle_W=1.0)   # covers samples 2 and 3 exactly
+    assert abs(r["avg_power_W"] - 3.0) < 1e-9 and abs(r["net_energy_J"] - 4.0) < 1e-9

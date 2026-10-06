@@ -173,6 +173,55 @@ def cpu_energy_from_powermetrics(log_path_or_watts, seconds):
                             "note": "CPU package power only; excludes DRAM/GPU/idle baseline subtraction"}}
 
 
+_PM_HDR = re.compile(r"\*\*\* Sampled system activity \((.+?)\) \(([0-9.]+)ms elapsed\)")
+_PM_CPU = re.compile(r"^CPU Power:\s*([0-9.]+)\s*mW", re.M)
+
+
+def powermetrics_samples(log_path):
+    """Parse a default-format powermetrics log into [(end_epoch_s, interval_s, cpu_W), ...].
+
+    Each sample block starts with '*** Sampled system activity (<date>) (<ms> elapsed) ***' and contains a
+    'CPU Power: N mW' line. The header date is the sample's end time (whole seconds), so a sample covers
+    [end - interval, end].
+    """
+    from datetime import datetime
+    txt = open(log_path).read()
+    hdr = list(_PM_HDR.finditer(txt))
+    out = []
+    for i, h in enumerate(hdr):
+        body = txt[h.end(): hdr[i + 1].start() if i + 1 < len(hdr) else len(txt)]
+        m = _PM_CPU.search(body)
+        if m is None:
+            continue
+        t = datetime.strptime(h.group(1), "%a %b %d %H:%M:%S %Y %z").timestamp()
+        out.append((t, float(h.group(2)) / 1e3, float(m.group(1)) / 1e3))
+    return out
+
+
+def cpu_energy_in_window(log_path, t_start, t_end, idle_W=None):
+    """CPU energy (J) between two epoch times from a powermetrics log, sample-overlap weighted.
+
+    ``idle_W`` (e.g. the mean CPU power of a log taken with the machine idle) is subtracted to give the
+    energy attributable to the run. Returns energy, mean power, covered seconds and sample count.
+    """
+    e = cov = 0.0
+    n = 0
+    for t1, dt, w in powermetrics_samples(log_path):
+        ov = max(0.0, min(t1, t_end) - max(t1 - dt, t_start))
+        if ov > 0:
+            e += w * ov
+            cov += ov
+            n += 1
+    if n == 0:
+        raise ValueError("no powermetrics samples overlap the window")
+    w = e / cov
+    secs = t_end - t_start
+    out = {"avg_power_W": w, "energy_J": w * secs, "covered_s": cov, "seconds": secs, "n_samples": n}
+    if idle_W is not None:
+        out.update(idle_W=float(idle_W), net_power_W=w - idle_W, net_energy_J=(w - idle_W) * secs)
+    return out
+
+
 def gibbs_op_counts(n_spins, n_sweeps, n_chains, degree):
     """Operation count for single-site Gibbs: per spin update ~ degree*2 flops (field sum) + RNG/sigmoid."""
     flops_per_update = 2.0 * degree + 10.0
