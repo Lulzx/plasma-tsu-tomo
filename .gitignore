@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+build/
+dist/
+# large raw outputs; curated figures live in report/figures/
+results/**/*.npz
+results/**/*.npy
+*.log
+results/*_quick/

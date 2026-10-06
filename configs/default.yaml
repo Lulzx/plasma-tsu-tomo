@@ -1,0 +1,48 @@
+seed: 0
+grid:
+  n: 32
+  size: 1.0
+data_grid:
+  n: 128
+plasma:            # D-shaped boundary, 806 active pixels at 32x32 (fills the 1 m box; centre-in-polygon rule)
+  R0: 0.5
+  Z0: 0.5
+  a: 0.495
+  kappa: 1.03
+  delta: 0.35
+cameras:           # 3 fans x 24 chords = 72; tuned so ~99.3% of active pixels are crossed by >=1 chord
+  - {name: top,       origin: [0.75, 1.0], n_chords: 24, fan_center_deg: -90, fan_width_deg: 50}
+  - {name: outboard,  origin: [1.0, 0.7],  n_chords: 24, fan_center_deg: 180, fan_width_deg: 65}
+  - {name: divertor,  origin: [0.25, 0.0], n_chords: 24, fan_center_deg: 90,  fan_width_deg: 100}
+noise:
+  rel: 0.03
+  floor: 0.01
+  calib_offset: 0.0
+model:
+  K: 8
+  lam: null        # null => use GCV lambda from Tikhonov (rescaled to level units)
+  eps_max_factor: 1.2   # eps_max = factor * max(Tikhonov estimate clipped >= 0)
+  A: null          # domain-wall penalty; null => auto (> largest single-level energy change)
+  sparse_threshold: 0.05   # I-sparse: drop T^T W T pixel couplings < 0.05*max|Q_jk| (linear-compensated); see ebm_ising
+  sparse_radius: null
+  tau: 0.5         # I-chain link std in units of the z-grid spacing dz_k (tau_mode: dz); effective chord noise^2 = sigma^2 + sum_k tau_k^2
+  tau_mode: dz     # dz | sigma | signal  (see tomo/ebm_chain.py)
+  Kz: 16
+schedule:
+  posterior: {n_warmup: 2000, n_samples: 500, steps_per_sample: 10}
+  anneal: {beta_min: 0.1, beta_max: 50.0, n_betas: 30, sweeps_per_beta: 20}
+  n_chains: 16
+  init: tikhonov    # tikhonov | hinton | random
+  tempering: {n_replicas: 8, beta_min: 0.2}
+experiments:         # used only by experiments/*.py
+  phantoms: [peaked, hollow, blob, edge]
+  seed0: 1000          # random field k uses problem seed seed0 + k (phantom rng and noise rng derive from it)
+  n_random: 200        # random fields for the cheap baselines (m2)
+  n_random_ebm: 20     # random fields for the expensive EBM comparison (m3 --n-random default)
+  variants: [potts, dense, sparse, chain]
+  ablation_phantoms: [peaked]
+  noise_levels: [0.01, 0.03, 0.05, 0.10]
+  K_values: [4, 8, 16]
+  tau_values: [0.1, 0.25, 0.5, 1.0, 2.0]
+  sparse_thresholds: [0.01, 0.02, 0.05, 0.1, 0.2]
+  cpu_power_W: 20.0    # assumed CPU package power for the laptop energy comparison (m5)

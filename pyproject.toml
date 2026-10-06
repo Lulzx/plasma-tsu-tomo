@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plasma-tsu-tomo"
+version = "0.1.0"
+description = "Plasma emissivity tomography as Ising/Potts sampling with thrml, with energy and latency estimates for a thermodynamic sampling unit"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Rishabh" }]
+keywords = ["tomography", "tokamak", "bolometry", "ising", "gibbs-sampling", "thrml", "probabilistic-computing", "jax"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+  "jax[cpu]>=0.4.30",
+  "thrml>=0.1.4",
+  "numpy",
+  "scipy",
+  "matplotlib",
+  "scikit-image",
+  "networkx",
+  "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.urls]
+Repository = "https://github.com/Lulzx/plasma-tsu-tomo"
+
+[tool.setuptools]
+packages = ["tomo"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
